@@ -1,0 +1,160 @@
+div {
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.daq-text {
+    padding: 5px;
+}
+
+#testgrid table {
+    border-spacing: 0;
+}
+
+#testgrid table tr.timeout {
+    opacity: 0.3;
+}
+
+#testgrid table td {
+    border: 1px solid grey;
+    padding: 4px;
+    background: #DDD;
+    min-width: 2em;
+}
+
+#testgrid table tr ~ tr td ~ td.old {
+    opacity: 0.5;
+}
+
+#testgrid table tr ~ tr td ~ td.gone {
+    opacity: 0.5;
+    background: #DDD;
+    color: rgba(0,0,0,0);
+}
+
+#testgrid table tr ~ tr td[status=true] {
+    background: #AEA;
+}
+
+#testgrid table tr ~ tr td[status=done] {
+    background: #AEA;
+}
+
+#testgrid table tr ~ tr td[status=merr] {
+    background: #FAA;
+}
+
+#testgrid table tr ~ tr td[status=serr] {
+    background: #F88;
+}
+
+#testgrid table tr ~ tr td[status=term] {
+    background: #FFF;
+}
+
+#testgrid table tr ~ tr td[status=fine] {
+    background: #BBF;
+}
+
+#testgrid table tr ~ tr td[status=exec] {
+    background: #EE6;
+}
+
+#testgrid table tr ~ tr td[status=hold] {
+    background: #AAF;
+}
+
+#testgrid table tr ~ tr td[label=info] {
+    background: #FFF;
+}
+
+#testgrid table tr ~ tr td[label=timer] {
+    background: #EEE;
+}
+
+#config_body .saving_indicator {
+    color: #f00;
+    opacity: 0;
+}
+
+#config_body.saving .saving_indicator {
+    opacity: 1;
+}
+
+#config_body .dated_indicator {
+    color: #f00;
+    display: none;
+}
+
+#config_body.dated .dated_indicator {
+    display: inline;
+}
+
+#config_body .provisional_indicator {
+    color: #f00;
+    display: none;
+}
+
+#config_body.provisional .provisional_indicator {
+    display: inline;
+}
+
+#config_body .save_button {
+    color: #004ED0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+#config_body.dirty .save_button {
+    opacity: 1;
+}
+
+.simple-button {
+    padding: 5px;
+    background: #ddd;
+    display: inline
+}
+
+#auth-body {
+    margin: 5px;
+}
+
+.auth-info {
+    display: block
+}
+
+.unauthenticated .auth-info {
+    display: none
+}
+
+.unauthenticated .content {
+    display: none
+}
+
+.auth-main {
+    width: 20em;
+}
+
+#listings {
+    display: none
+}
+
+.active {
+    display: block!important
+}
+
+#filters {
+    display: none;
+    padding-bottom: 20px;
+}
+
+#filters div {
+    padding: 2px;
+}
+
+#daq-versions {
+    display: none;
+}
+
+#daq-versions.valid {
+    display: block
+}
