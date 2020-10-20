@@ -8,12 +8,15 @@ fi
 ROOT=$(realpath $(dirname $0)/..)
 cd $ROOT
 
-source etc/config_base.sh
-
 PROJECT=$1
 shift
 
-CFILE=$PROJECT.js
+CFILE=dashboard/public/firebase_config.js
+if [ ! -f $CFILE ]; then
+    echo Missing $CFILE
+    echo Acquire from your friendly neighborhood Firebase dev console.
+    #false
+fi
 
 echo
 echo For local hosting: firebase serve --only hosting --project $PROJECT
@@ -22,19 +25,13 @@ echo Firestore address: https://console.cloud.google.com/firestore/data/?project
 echo Application host : https://$PROJECT.firebaseapp.com
 echo
 
-if [ -f local/$CFILE ]; then
-    echo Copying local/$CFILE to firebase/public/firebase_config.js
-    cp local/$CFILE firebase/public/firebase_config.js
-else
-    echo No local/$CFILE firebase configuration found.
-    false
-fi
-
-cd firebase
+cd dashboard
 
 version=`git describe --dirty`
 echo Deploying version $version to $PROJECT
 echo "const daq_deploy_version = '$version';" > public/deploy_version.js
+
+firebase use $PROJECT
 
 echo firebase deploy --project $PROJECT
 firebase deploy --project $PROJECT

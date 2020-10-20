@@ -1,9 +1,9 @@
-if (!firebaseConfig) {
-  console.error('firebaseConfig not properly initialized');
-}
+//if (!firebaseConfig) {
+//  console.error('firebaseConfig not properly initialized');
+//}
 
 // Your web app's Firebase configuration
-firebase.initializeApp(firebaseConfig);
+//firebase.initializeApp(firebaseConfig);
 
 var uiConfig = {
   signInSuccessUrl: window.location,
