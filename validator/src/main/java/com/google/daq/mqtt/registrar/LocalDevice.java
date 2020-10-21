@@ -228,7 +228,7 @@ class LocalDevice {
       settings.metadata = metadataString();
       settings.config = deviceConfigString();
       settings.proxyDevices = getProxyDevicesList();
-      settings.keyAlgorithm = metadata.cloud.auth_type;
+      settings.keyAlgorithm = metadata.cloud == null ? null : metadata.cloud.auth_type;
       settings.keyBytes = getKeyBytes();
       return settings;
     } catch (Exception e) {

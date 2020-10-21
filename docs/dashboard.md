@@ -5,5 +5,3 @@
 * Cloud build API
 * Enable authentication provider
 * Enable user access
-
-
