@@ -16,56 +16,19 @@
 
 <body>
   <div class="content">
-    <div id="description" class="daq-text"><a class="description"></a></div>
-    <div id="module_config"></div>
-    <div id="filters">
-      <h2>Filters: </h2>
-      <div>
-        Dates 
-        <label>from</label>
-        <input id="fromFilter" type="date" />
-        <label>to</label>
-        <input id="toFilter" type="date"/>
-      </div>
-      <div>
-        <label>Device ID</label>
-        <input id="deviceFilter" type="text" />
-      </div>
-      <div>
-        <label>Origin</label>
-        <input id="originFilter" type="text" />
-      </div>
-      <div>
-        <label>Site</label>
-        <input id="siteFilter" type="text" />
-      </div>
-      <div>
-        <label>Port</label>
-        <input id="portFilter" type="number"/>
-      </div>
-      <div>
-        <label>Run IDs</label>
-        <input id="runidFilter" type="text"/>
-      </div>
-      <div>
-        <button onClick="applyFilter()">Apply</button>
-      </div>
-    </div>
+    <div id="description" class="udmi-text"><a class="description"></a></div>
+    <pre id="device" class="udmi-text"></pre>
     <div id="listings">
-      <h2>Origins</h2>
-      <div class="origins"></div>
-      <h2>Sites</h2>
-      <div class="sites"></div>
+      <h2>Registries</h2>
+      <div class="registries"></div>
+      <h2>Devices</h2>
+      <div class="devices"></div>
       <h2>Users</h2>
       <div class="users"></div>
     </div>
-    <div id="testgrid">
-      <table>
-      </table>
-    </div>
   </div>
-  <div class="daq-text" id="status">Initializing...</div>
-  <div class="daq-text" id="update"></div>
+  <div class="udmi-text" id="status">Initializing...</div>
+  <div class="udmi-text" id="update"></div>
   <div id="auth-body">
     <div class="auth-main">
       <div id="firebaseui-auth-container"></div>
@@ -73,15 +36,15 @@
     <div class="auth-info">Signed in as <span id="user-name"></span>, <span id="user-email"></span>
       <span id="sign-out" class="simple-button">Sign Out</span></div>
   </div>
-  <div id="daq-versions">
-    <div class="daq-text">DAQ version <span id="daq-version"></span></div>
-    <div class="daq-text">LSB version <span id="lsb-version"></span></div>
-    <div class="daq-text">SYS version <span id="sys-version"></span></div>
+  <div id="udmi-versions">
+    <div class="udmi-text">UDMI version <span id="udmi-version"></span></div>
+    <div class="udmi-text">LSB version <span id="lsb-version"></span></div>
+    <div class="udmi-text">SYS version <span id="sys-version"></span></div>
   </div>
-  <div class="daq-text">Web version <span id="deploy-version"></span></div>
+  <div class="udmi-text">Web version <span id="deploy-version"></span></div>
 </body>
 <script>
-  if (typeof daq_deploy_version !== 'undefined') {
-    document.getElementById('deploy-version').innerHTML = daq_deploy_version;
+  if (typeof udmi_deploy_version !== 'undefined') {
+    document.getElementById('deploy-version').innerHTML = udmi_deploy_version;
   }
 </script>

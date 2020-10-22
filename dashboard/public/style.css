@@ -2,7 +2,7 @@ div {
     font-family: Arial, Helvetica, sans-serif;
 }
 
-.daq-text {
+.udmi-text {
     padding: 5px;
 }
 
@@ -135,7 +135,6 @@ div {
 }
 
 #listings {
-    display: none
 }
 
 .active {
@@ -151,10 +150,10 @@ div {
     padding: 2px;
 }
 
-#daq-versions {
+#udmi-versions {
     display: none;
 }
 
-#daq-versions.valid {
+#udmi-versions.valid {
     display: block
 }
