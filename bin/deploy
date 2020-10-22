@@ -6,32 +6,22 @@ if [ $# != 1 ]; then
 fi
 
 ROOT=$(realpath $(dirname $0)/..)
-cd $ROOT
+cd $ROOT/dashboard
 
 PROJECT=$1
 shift
 
-CFILE=dashboard/public/firebase_config.js
-if [ ! -f $CFILE ]; then
-    echo Missing $CFILE
-    echo Acquire from your friendly neighborhood Firebase dev console.
-    #false
-fi
-
-echo
-echo For local hosting: firebase serve --only hosting --project $PROJECT
-echo Subscription pull: gcloud pubsub subscriptions pull --auto-ack daq_monitor --project $PROJECT
-echo Firestore address: https://console.cloud.google.com/firestore/data/?project=$PROJECT
-echo Application host : https://$PROJECT.firebaseapp.com
-echo
-
-cd dashboard
-
 version=`git describe --dirty`
 echo Deploying version $version to $PROJECT
-echo "const daq_deploy_version = '$version';" > public/deploy_version.js
+echo "const udmi_deploy_version = '$version';" > public/deploy_version.js
 
 firebase use $PROJECT
 
 echo firebase deploy --project $PROJECT
 firebase deploy --project $PROJECT
+
+echo
+echo For local hosting: firebase serve --only hosting --project $PROJECT
+echo Firestore address: https://console.cloud.google.com/firestore/data/?project=$PROJECT
+echo Application host : https://$PROJECT.firebaseapp.com
+echo

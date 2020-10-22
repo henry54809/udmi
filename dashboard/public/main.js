@@ -693,15 +693,22 @@ function authenticated(userData) {
     return;
   }
 
-  const perm_doc = db.collection('permissions').doc(userData.uid);
   const user_doc = db.collection('users').doc(userData.uid);
+  const perm_doc = user_doc.collection('iam').doc('default');
+  const info_doc = user_doc.collection('info').doc('profile');
   const timestamp = new Date().toJSON();
   user_doc.set({
-    name: userData.displayName,
-    email: userData.email,
     updated: timestamp
-  }).then(function () {
+  }).then(function() {
+    statusUpdate('User doc updated');
+    return info_doc.set({
+      name: userData.displayName,
+      email: userData.email,
+      updated: timestamp
+    });
+  }).then(function() {
     statusUpdate('User info updated');
+  }).then(function() {
     perm_doc.get().then((doc) => {
       if (doc.exists && doc.data().enabled) {
         setupUser();
