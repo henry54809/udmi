@@ -162,7 +162,15 @@ function consolidateConfig(registryId, deviceId) {
       })
     })
     .then(() => {
-      console.log(new_config);
+      attributes = {
+        deviceRegistryId: registryId,
+        deviceId: deviceId,
+        subFolder: 'config'
+      }
+      publishPubsubMessage('target', new_config, attributes)
+        .then(console.log('target publish complete'));
+      publishPubsubMessage('config', new_config, attributes)
+        .then(console.log('config publish complete'));
     });
 }
 
