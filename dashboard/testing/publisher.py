@@ -24,7 +24,7 @@ at https://cloud.google.com/pubsub/docs.
 import argparse
 
 
-def publish_messages(project_id, topic_id):
+def publish_messages(project_id, topic_id, attributes, filename):
     """Publishes multiple messages to a Pub/Sub topic."""
     # [START pubsub_quickstart_publisher]
     # [START pubsub_publish]
@@ -39,38 +39,11 @@ def publish_messages(project_id, topic_id):
     # in the form `projects/{project_id}/topics/{topic_id}`
     topic_path = publisher.topic_path(project_id, topic_id)
 
-    data = "Message of the future"
-    # Data must be a bytestring
+    data = get_message(filename)
     data = data.encode("utf-8")
-    # When you publish a message, the client returns a future.
-    future = publisher.publish(topic_path, data)
+    attr = get_attributes(attributes)
+    future = publisher.publish(topic_path, data, **attr)
     print(future.result())
-
-
-def publish_messages_with_custom_attributes(project_id, topic_id):
-    """Publishes multiple messages with custom attributes
-    to a Pub/Sub topic."""
-    # [START pubsub_publish_custom_attributes]
-    from google.cloud import pubsub_v1
-
-    # TODO(developer)
-    # project_id = "your-project-id"
-    # topic_id = "your-topic-id"
-
-    publisher = pubsub_v1.PublisherClient()
-    topic_path = publisher.topic_path(project_id, topic_id)
-
-    for n in range(1, 10):
-        data = "Message message"
-        data = data.encode("utf-8")
-        future = publisher.publish(
-            topic_path, data, origin="python-sample", username="gcp"
-        )
-        print(future.result())
-
-    print(f"Published messages with custom attributes to {topic_path}.")
-    # [END pubsub_publish_custom_attributes]
-
 
 
 if __name__ == "__main__":
@@ -79,7 +52,9 @@ if __name__ == "__main__":
     )
     parser.add_argument("project_id", help="Your Google Cloud project ID")
     parser.add_argument("topic_id", help="Target topic for publish message")
+    parser.add_argument("attributes", help="Filename of message attributes")
+    parser.add_argument("filename", help="Filename of message contents")
 
     args = parser.parse_args()
 
-    publish_messages(args.project_id, args.topic_id)
+    publish_messages(args.project_id, args.topic_id, args.attributes, args.filename)

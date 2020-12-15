@@ -1,0 +1,3 @@
+#!/bin/bash -e
+
+firebase emulators:start
