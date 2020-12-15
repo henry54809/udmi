@@ -1,0 +1,10 @@
+#!/bin/bash -e
+
+if [ ! -d venv ]; then
+    echo Run testing/install to setup python venv.
+    false
+fi
+
+export PUBSUB_EMULATOR_HOST=localhost:8085
+
+venv/bin/python testing/publisher.py bos-udmi-hub target
