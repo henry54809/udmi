@@ -59,8 +59,9 @@ exports.device_state = functions.pubsub.topic('state').onPublish((event) => {
   const msgString = Buffer.from(base64, 'base64').toString();
   const msgObject = JSON.parse(msgString);
 
+  console.log('state -> target', registryId, deviceId, msgObject);
+
   attributes.subFolder = 'state';
-  console.log(`Processing state update for ${deviceId}`, msgObject);
   return publishPubsubMessage('target', msgObject, attributes).then(() => {
     return getDeviceDoc(registryId, deviceId);
   }).then((deviceDoc) => {
@@ -73,6 +74,7 @@ exports.device_config = functions.pubsub.topic('config').onPublish((event) => {
   const attributes = event.attributes;
   const subFolder = attributes.subFolder;
   if (subFolder != 'config') {
+    console.log('Rejecting config subfolder', subFolder)
     return null;
   }
   const projectId = attributes.projectId;

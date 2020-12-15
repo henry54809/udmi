@@ -1,5 +1,5 @@
 {
   "deviceRegistryId": "testing",
   "deviceId": "testing",
-  "subFolder": "testing"
+  "subFolder": "@subfolder@"
 }
