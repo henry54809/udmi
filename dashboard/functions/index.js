@@ -34,9 +34,6 @@ exports.device_target = functions.pubsub.topic('target').onPublish((event) => {
   console.log('target', registryId, deviceId, subFolder, msgObject);
 
   const reg_doc = db.collection('registry').doc(registryId);
-  reg_doc.set({
-    'updated': timestamp
-  }, { merge: true });
   const dev_doc = reg_doc.collection('device').doc(deviceId);
   dev_doc.set({
     'updated': timestamp
@@ -59,14 +56,20 @@ exports.device_state = functions.pubsub.topic('state').onPublish((event) => {
   const msgString = Buffer.from(base64, 'base64').toString();
   const msgObject = JSON.parse(msgString);
 
-  console.log('state -> target', registryId, deviceId, msgObject);
+  console.log('state -> target', registryId, deviceId)
 
   attributes.subFolder = 'state';
   return publishPubsubMessage('target', msgObject, attributes).then(() => {
     return getDeviceDoc(registryId, deviceId);
   }).then((deviceDoc) => {
-    deviceState = deviceDoc.collection('state').doc('latest');
-    return deviceState.set(msgObject);
+    for (var block in msgObject) {
+      console.log('Updating state block', block)
+      if (typeof msgObject[block] === 'object') {
+        state_block = deviceDoc.collection('state').doc(block);
+        state_block.set(msgObject[block]);
+      }
+    }
+    return null;
   });
 });
 
@@ -138,12 +141,36 @@ exports.device_config = functions.pubsub.topic('config').onPublish((event) => {
   });
 });
 
+function consolidateConfig(registryId, deviceId) {
+  const reg_doc = db.collection('registry').doc(registryId);
+  const dev_doc = reg_doc.collection('device').doc(deviceId);
+  const configs = dev_doc.collection('config');
+  const now = Date.now();
+  const timestamp = new Date(now).toJSON();
+
+  console.log('consolidating config for', registryId, deviceId);
+
+  const new_config = {
+    'version': '1',
+    'timestamp': timestamp
+  };
+  return configs.get()
+    .then((snapshot) => {
+      snapshot.forEach(doc => {
+        console.log('consolidating config with', registryId, deviceId, doc.id);
+        new_config[doc.id] = doc.data();
+      })
+    })
+    .then(() => {
+      console.log(new_config);
+    });
+}
+
 exports.config_update = functions.firestore
   .document('registry/{registryId}/device/{deviceId}/config/{subFolder}')
   .onWrite((change, context) => {
-    console.log('woot')
-    console.log('config_update', context);
-    return null;
+    console.log('processing config update');
+    return consolidateConfig(context.params.registryId, context.params.deviceId);
   });
 
 function publishPubsubMessage(topicName, data, attributes) {
