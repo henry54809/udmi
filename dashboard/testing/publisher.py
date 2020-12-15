@@ -22,6 +22,16 @@ at https://cloud.google.com/pubsub/docs.
 """
 
 import argparse
+import yaml
+
+
+def get_message(filename):
+    return open(filename, 'r').read()
+
+
+def get_attributes(attributes):
+    with open(attributes) as stream:
+        return yaml.safe_load(stream)
 
 
 def publish_messages(project_id, topic_id, attributes, filename):

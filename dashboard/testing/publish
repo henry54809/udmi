@@ -7,5 +7,6 @@ fi
 
 export PUBSUB_EMULATOR_HOST=localhost:8085
 
-venv/bin/python testing/publisher.py bos-udmi-hub target foo bar
+cd testing
 
+../venv/bin/python publisher.py bos-udmi-hub target attributes.json message.json
