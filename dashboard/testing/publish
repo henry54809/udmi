@@ -37,7 +37,8 @@ for file in $message_dir/*.json; do
     target=${suffix%.json}
     topic=${target%%_*}
     subpre=${target#${topic}}
-    subfolder=${subpre#_}
-    sed -e s/@subfolder@/$subfolder/ testing/attributes.json > .attributes.json
+    subescape=${subpre#_}
+    subfolder=$(tr - / <<< $subescape)
+    sed -e s:@subfolder@:$subfolder: testing/attributes.json > .attributes.json
     $publisher $topic .attributes.json $file
 done

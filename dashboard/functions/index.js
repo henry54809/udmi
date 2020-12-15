@@ -70,13 +70,32 @@ exports.device_state = functions.pubsub.topic('state').onPublish((event) => {
   });
 });
 
+function config_update(attributes, msgObject) {
+  const registryId = attributes.deviceRegistryId;
+  const deviceId = attributes.deviceId;
+  const subFolder = attributes.subFolder;
+  const configBlock = subFolder.substring(subFolder.indexOf('/') + 1);
+  const now = Date.now();
+  const timestamp = new Date(now).toJSON();
+
+  console.log('config', registryId, deviceId, configBlock, msgObject);
+
+  const reg_doc = db.collection('registry').doc(registryId);
+  reg_doc.set({
+    'updated': timestamp
+  }, { merge: true });
+  const dev_doc = reg_doc.collection('device').doc(deviceId);
+  dev_doc.set({
+    'updated': timestamp
+  }, { merge: true });
+  const config_doc = dev_doc.collection('config').doc(configBlock);
+
+  return config_doc.set(msgObject);
+}
+
 exports.device_config = functions.pubsub.topic('config').onPublish((event) => {
   const attributes = event.attributes;
   const subFolder = attributes.subFolder;
-  if (subFolder != 'config') {
-    console.log('Rejecting config subfolder', subFolder)
-    return null;
-  }
   const projectId = attributes.projectId;
   const cloudRegion = attributes.cloudRegion;
   const registryId = attributes.deviceRegistryId;
@@ -85,6 +104,15 @@ exports.device_config = functions.pubsub.topic('config').onPublish((event) => {
   const msgString = Buffer.from(binaryData, 'base64').toString();
   const msgObject = JSON.parse(msgString);
   const version = 0;
+
+  if (subFolder.startsWith('config/')) {
+    return config_update(attributes, msgObject);
+  }
+
+  if (subFolder != 'config') {
+    console.log('Rejecting unknown config subfolder', subFolder);
+    return null;
+  }
 
   console.log(projectId, cloudRegion, registryId, deviceId, msgString);
 
@@ -109,6 +137,14 @@ exports.device_config = functions.pubsub.topic('config').onPublish((event) => {
     console.error('Could not update config:', deviceId, err);
   });
 });
+
+exports.config_update = functions.firestore
+  .document('registry/{registryId}/device/{deviceId}/config/{subFolder}')
+  .onWrite((change, context) => {
+    console.log('woot')
+    console.log('config_update', context);
+    return null;
+  });
 
 function publishPubsubMessage(topicName, data, attributes) {
   const dataBuffer = Buffer.from(JSON.stringify(data));
