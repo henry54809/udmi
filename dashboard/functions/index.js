@@ -126,12 +126,10 @@ exports.device_config = functions.pubsub.topic('config').onPublish((event) => {
     deviceId
   );
 
-  console.log(formattedName, msgObject);
-
   const request = {
     name: formattedName,
     versionToUpdate: version,
-    binaryData: binaryData,
+    binaryData: binaryData
   };
 
   return iotClient.modifyCloudToDeviceConfig(request).then(responses => {
@@ -142,6 +140,8 @@ exports.device_config = functions.pubsub.topic('config').onPublish((event) => {
 });
 
 function consolidateConfig(registryId, deviceId) {
+  const projectId = process.env.GCP_PROJECT || process.env.GCLOUD_PROJECT;
+  const cloudRegion = 'us-central1';
   const reg_doc = db.collection('registry').doc(registryId);
   const dev_doc = reg_doc.collection('device').doc(deviceId);
   const configs = dev_doc.collection('config');
@@ -163,6 +163,8 @@ function consolidateConfig(registryId, deviceId) {
     })
     .then(() => {
       attributes = {
+        projectId: projectId,
+        cloudRegion: cloudRegion,
         deviceRegistryId: registryId,
         deviceId: deviceId,
         subFolder: 'config'
