@@ -42,8 +42,7 @@ exports.device_target = functions.pubsub.topic('target').onPublish((event) => {
   folder_doc.set({
     'updated': timestamp
   }, { merge: true });
-  const entry_doc = folder_doc.collection('entry').doc(timestamp);
-  entry_doc.set(msgObject);
+  folder_doc.set(msgObject);
 
   return null;
 });
@@ -73,15 +72,18 @@ exports.device_state = functions.pubsub.topic('state').onPublish((event) => {
   });
 });
 
-function config_update(attributes, msgObject) {
+exports.device_config = functions.pubsub.topic('config').onPublish((event) => {
+  const attributes = event.attributes;
   const registryId = attributes.deviceRegistryId;
   const deviceId = attributes.deviceId;
-  const subFolder = attributes.subFolder;
-  const configBlock = subFolder.substring(subFolder.indexOf('/') + 1);
+  const subFolder = attributes.subFolder || 'unknown';
+  const base64 = event.data;
   const now = Date.now();
   const timestamp = new Date(now).toJSON();
+  const msgString = Buffer.from(base64, 'base64').toString();
+  const msgObject = JSON.parse(msgString);
 
-  console.log('config', registryId, deviceId, configBlock, msgObject);
+  console.log('config', registryId, deviceId, subFolder, msgObject);
 
   const reg_doc = db.collection('registry').doc(registryId);
   reg_doc.set({
@@ -91,33 +93,20 @@ function config_update(attributes, msgObject) {
   dev_doc.set({
     'updated': timestamp
   }, { merge: true });
-  const config_doc = dev_doc.collection('config').doc(configBlock);
+  const config_doc = dev_doc.collection('config').doc(subFolder);
 
   return config_doc.set(msgObject);
-}
+});
 
-exports.device_config = functions.pubsub.topic('config').onPublish((event) => {
-  const attributes = event.attributes;
-  const subFolder = attributes.subFolder;
+function update_device_config(message, attributes) {
   const projectId = attributes.projectId;
   const cloudRegion = attributes.cloudRegion;
   const registryId = attributes.deviceRegistryId;
   const deviceId = attributes.deviceId;
-  const binaryData = event.data;
-  const msgString = Buffer.from(binaryData, 'base64').toString();
-  const msgObject = JSON.parse(msgString);
   const version = 0;
 
-  if (subFolder.startsWith('config/')) {
-    return config_update(attributes, msgObject);
-  }
-
-  if (subFolder != 'config') {
-    console.log('Rejecting unknown config subfolder', subFolder);
-    return null;
-  }
-
-  console.log(projectId, cloudRegion, registryId, deviceId, msgString);
+  const msgString = JSON.stringify(message);
+  const binaryData = Buffer.from(msgString);
 
   const formattedName = iotClient.devicePath(
     projectId,
@@ -126,6 +115,8 @@ exports.device_config = functions.pubsub.topic('config').onPublish((event) => {
     deviceId
   );
 
+  console.log('request', formattedName, msgString);
+
   const request = {
     name: formattedName,
     versionToUpdate: version,
@@ -133,11 +124,11 @@ exports.device_config = functions.pubsub.topic('config').onPublish((event) => {
   };
 
   return iotClient.modifyCloudToDeviceConfig(request).then(responses => {
-    console.log('Success:', responses[0]);
+    //console.log('Success:', responses[0]);
   }).catch(err => {
     console.error('Could not update config:', deviceId, err);
   });
-});
+}
 
 function consolidateConfig(registryId, deviceId) {
   const projectId = process.env.GCP_PROJECT || process.env.GCLOUD_PROJECT;
@@ -171,8 +162,7 @@ function consolidateConfig(registryId, deviceId) {
       }
       publishPubsubMessage('target', new_config, attributes)
         .then(console.log('target publish complete'));
-      publishPubsubMessage('config', new_config, attributes)
-        .then(console.log('config publish complete'));
+      update_device_config(new_config, attributes);
     });
 }
 
