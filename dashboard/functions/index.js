@@ -24,6 +24,7 @@ function getDeviceDoc(registryId, deviceId) {
 exports.device_target = functions.pubsub.topic('target').onPublish((event) => {
   const registryId = event.attributes.deviceRegistryId;
   const deviceId = event.attributes.deviceId;
+  const subType = event.attributes.subType || 'events';
   const subFolder = event.attributes.subFolder || 'unknown';
   const base64 = event.data;
   const msgString = Buffer.from(base64, 'base64').toString();
@@ -31,7 +32,11 @@ exports.device_target = functions.pubsub.topic('target').onPublish((event) => {
   const now = Date.now();
   const timestamp = new Date(now).toJSON();
 
-  console.log('target', registryId, deviceId, subFolder, msgObject);
+  console.log('target', registryId, deviceId, subType, subFolder, msgObject);
+
+  if (subType != 'events') {
+    return null;
+  }
 
   const reg_doc = db.collection('registry').doc(registryId);
   const dev_doc = reg_doc.collection('device').doc(deviceId);
@@ -42,9 +47,7 @@ exports.device_target = functions.pubsub.topic('target').onPublish((event) => {
   folder_doc.set({
     'updated': timestamp
   }, { merge: true });
-  folder_doc.set(msgObject);
-
-  return null;
+  return folder_doc.set(msgObject);
 });
 
 exports.device_state = functions.pubsub.topic('state').onPublish((event) => {
@@ -55,21 +58,22 @@ exports.device_state = functions.pubsub.topic('state').onPublish((event) => {
   const msgString = Buffer.from(base64, 'base64').toString();
   const msgObject = JSON.parse(msgString);
 
-  console.log('state -> target', registryId, deviceId)
+  promises = [];
 
-  attributes.subFolder = 'state';
-  return publishPubsubMessage('target', msgObject, attributes).then(() => {
-    return getDeviceDoc(registryId, deviceId);
-  }).then((deviceDoc) => {
-    for (var block in msgObject) {
-      console.log('Updating state block', block)
-      if (typeof msgObject[block] === 'object') {
-        state_block = deviceDoc.collection('state').doc(block);
-        state_block.set(msgObject[block]);
-      }
+  attributes.subType = 'state';
+  for (var block in msgObject) {
+    let subMsg = msgObject[block];
+    if (typeof subMsg === 'object') {
+      console.log('state -> target', registryId, deviceId, block);
+      attributes.subFolder = block;
+      promises.concat(publishPubsubMessage('target', subMsg, attributes));
+      device_doc = getDeviceDoc(registryId, deviceId);
+      state_block = device_doc.collection('state').doc(block);
+      promises.concat(state_block.set(subMsg));
     }
-    return null;
-  });
+  }
+
+  return Promise.all(promises);
 });
 
 exports.device_config = functions.pubsub.topic('config').onPublish((event) => {
@@ -85,17 +89,23 @@ exports.device_config = functions.pubsub.topic('config').onPublish((event) => {
 
   console.log('config', registryId, deviceId, subFolder, msgObject);
 
-  const reg_doc = db.collection('registry').doc(registryId);
-  reg_doc.set({
-    'updated': timestamp
-  }, { merge: true });
-  const dev_doc = reg_doc.collection('device').doc(deviceId);
-  dev_doc.set({
-    'updated': timestamp
-  }, { merge: true });
-  const config_doc = dev_doc.collection('config').doc(subFolder);
+  promises = [];
 
-  return config_doc.set(msgObject);
+  const reg_doc = db.collection('registry').doc(registryId);
+  promises.concat(reg_doc.set({
+    'updated': timestamp
+  }, { merge: true }));
+  const dev_doc = reg_doc.collection('device').doc(deviceId);
+  promises.concat(dev_doc.set({
+    'updated': timestamp
+  }, { merge: true }));
+  const config_doc = dev_doc.collection('config').doc(subFolder);
+  promises.concat(config_doc.set(msgObject));
+
+  attributes.subType = 'config';
+  promises.concat(publishPubsubMessage('target', msgObject, attributes));
+
+  return Promise.all(promises);
 });
 
 function update_device_config(message, attributes) {
@@ -108,6 +118,7 @@ function update_device_config(message, attributes) {
   const msgString = JSON.stringify(message);
   const binaryData = Buffer.from(msgString);
 
+  console.log('format', projectId, cloudRegion, registryId, deviceId);
   const formattedName = iotClient.devicePath(
     projectId,
     cloudRegion,
@@ -123,11 +134,7 @@ function update_device_config(message, attributes) {
     binaryData: binaryData
   };
 
-  return iotClient.modifyCloudToDeviceConfig(request).then(responses => {
-    //console.log('Success:', responses[0]);
-  }).catch(err => {
-    console.error('Could not update config:', deviceId, err);
-  });
+  return iotClient.modifyCloudToDeviceConfig(request);
 }
 
 function consolidateConfig(registryId, deviceId) {
@@ -145,44 +152,41 @@ function consolidateConfig(registryId, deviceId) {
     'version': '1',
     'timestamp': timestamp
   };
+
+  const attributes = {
+    projectId: projectId,
+    cloudRegion: cloudRegion,
+    deviceId: deviceId,
+    deviceRegistryId: registryId,
+    subType: 'config'
+  };
+
   return configs.get()
     .then((snapshot) => {
       snapshot.forEach(doc => {
-        console.log('consolidating config with', registryId, deviceId, doc.id);
+        console.log('consolidating config with', registryId, deviceId, doc.id, doc.data());
         new_config[doc.id] = doc.data();
-      })
-    })
-    .then(() => {
-      attributes = {
-        projectId: projectId,
-        cloudRegion: cloudRegion,
-        deviceRegistryId: registryId,
-        deviceId: deviceId,
-        subFolder: 'config'
-      }
-      publishPubsubMessage('target', new_config, attributes)
-        .then(console.log('target publish complete'));
-      update_device_config(new_config, attributes);
+      });
+      return update_device_config(new_config, attributes);
     });
 }
 
 exports.config_update = functions.firestore
   .document('registry/{registryId}/device/{deviceId}/config/{subFolder}')
   .onWrite((change, context) => {
-    console.log('processing config update');
     return consolidateConfig(context.params.registryId, context.params.deviceId);
   });
 
 function publishPubsubMessage(topicName, data, attributes) {
   const dataBuffer = Buffer.from(JSON.stringify(data));
+  var attr_copy = Object.assign({}, attributes);
+
+  console.log('publish', topicName, attributes, data);
 
   return pubsub
     .topic(topicName)
-    .publish(dataBuffer, attributes)
+    .publish(dataBuffer, attr_copy)
     .then(messageId => {
       console.debug(`Message ${messageId} published to ${topicName}.`);
-    })
-    .catch(err => {
-      console.error('publishing error:', err);
     });
 }
