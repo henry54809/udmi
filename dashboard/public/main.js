@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   db.settings(settings);
   if (location.hostname === "localhost") {
+    //firebase.auth().useEmulator('http://localhost:9099/');
     db.useEmulator("localhost", 8080);
   }
 });
@@ -46,14 +47,14 @@ function listUsers() {
 
 function showDevice(registry_id, device_id) {
   statusUpdate(`Show device ${registry_id}:${device_id}`)
-  db
-    .collection('registry').doc(registry_id)
-    .collection('device').doc(device_id)
-    .collection('events').doc('pointset')
-    .onSnapshot((snapshot) => {
-      const device = document.querySelector('#device');
-      device.innerHTML = JSON.stringify(snapshot.data(), null, 2);
-    });
+  const pointset_doc = db
+        .collection('registry').doc(registry_id)
+        .collection('device').doc(device_id)
+        .collection('events').doc('pointset');
+  pointset_doc.onSnapshot((snapshot) => {
+    const device = document.querySelector('#device');
+    device.innerHTML = JSON.stringify(snapshot.data(), null, 2);
+  });
 }
 
 function authenticated(userData) {
@@ -66,18 +67,12 @@ function authenticated(userData) {
   const perm_doc = user_doc.collection('iam').doc('default');
   const info_doc = user_doc.collection('info').doc('profile');
   const timestamp = new Date().toJSON();
-  user_doc.set({
-    updated: timestamp
-  }).then(function() {
-    statusUpdate('User doc updated');
-    return info_doc.set({
+  info_doc.set({
       name: userData.displayName,
       email: userData.email,
       updated: timestamp
-    });
   }).then(function() {
     statusUpdate('User info updated');
-  }).then(function() {
     perm_doc.get().then((doc) => {
       if (doc.exists && doc.data().enabled) {
         setupUser();

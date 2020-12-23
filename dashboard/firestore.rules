@@ -7,7 +7,7 @@ service cloud.firestore {
       allow read, create;
     }
     match /{document=**} {
-      allow read, write: if get(/databases/$(database)/documents/users/$(request.auth.uid)/iam/default).data.enabled == true
+      allow read, write: if get(/databases/$(database)/documents/users/$(request.auth.uid)/iam/default).data.enabled == true;
     }
   }
 }

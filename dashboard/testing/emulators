@@ -3,4 +3,5 @@
 ROOT=$(dirname $0)/..
 cd $ROOT
 
-firebase emulators:start
+firebase emulators:start --import=testing/database
+
