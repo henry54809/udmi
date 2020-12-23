@@ -8,6 +8,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const settings = {
   };
   db.settings(settings);
+  if (location.hostname === "localhost") {
+    db.useEmulator("localhost", 8080);
+  }
 });
 
 function getQueryParam(field) {
