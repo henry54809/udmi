@@ -47,14 +47,27 @@ function listUsers() {
 
 function showDevice(registry_id, device_id) {
   statusUpdate(`Show device ${registry_id}:${device_id}`)
-  const pointset_doc = db
+  const device_doc = db
         .collection('registry').doc(registry_id)
-        .collection('device').doc(device_id)
-        .collection('events').doc('pointset');
-  pointset_doc.onSnapshot((snapshot) => {
-    const device = document.querySelector('#device');
-    device.innerHTML = JSON.stringify(snapshot.data(), null, 2);
+        .collection('device').doc(device_id);
+  element = 'hello';
+  showDeviceDocuments(device_doc, 'config', element);
+  showDeviceDocuments(device_doc, 'state', element);
+  showDeviceDocuments(device_doc, 'events', element);
+}
+
+function showDeviceDocuments(device_doc, subsection, target_element) {
+  collection = device_doc.collection(subsection);
+  collection.onSnapshot((device_docs) => {
+    device_docs.forEach((doc) => {
+      updateDeviceTable(target_element, subsection, doc.id, doc.data());
+    });
   });
+}
+
+function updateDeviceTable(element, subsection, subblock, data) {
+  // TODO: Write this into a table!
+  console.log(element, subsection, subblock, data);
 }
 
 function authenticated(userData) {
