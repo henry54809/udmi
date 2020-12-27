@@ -50,24 +50,49 @@ function showDevice(registry_id, device_id) {
   const device_doc = db
         .collection('registry').doc(registry_id)
         .collection('device').doc(device_id);
-  element = 'hello';
-  showDeviceDocuments(device_doc, 'config', element);
-  showDeviceDocuments(device_doc, 'state', element);
-  showDeviceDocuments(device_doc, 'events', element);
+  const device_root = document.getElementById('device_display');
+  showDeviceDocuments(device_root, device_doc, 'config');
+  showDeviceDocuments(device_root, device_doc, 'state');
+  showDeviceDocuments(device_root, device_doc, 'events');
 }
 
-function showDeviceDocuments(device_doc, subsection, target_element) {
-  collection = device_doc.collection(subsection);
-  collection.onSnapshot((device_docs) => {
+function showDeviceDocuments(device_root, device_doc, subsection) {
+  device_doc.collection(subsection).onSnapshot((device_docs) => {
     device_docs.forEach((doc) => {
-      updateDeviceTable(target_element, subsection, doc.id, doc.data());
+      const channel_element = ensureDeviceTable(device_root, doc.id);
+      updateDeviceRows(doc.data(), (row_key, cell_data) => {
+        const row_element = ensureDeviceRow(channel_element, row_key);
+        const column_element = ensureDeviceColumn(row_element, subsection);
+        console.log(column_element, cell_data);
+        device_root.innerHTML += cell_data;
+      });
     });
   });
 }
 
-function updateDeviceTable(element, subsection, subblock, data) {
-  // TODO: Write this into a table!
-  console.log(element, subsection, subblock, data);
+function updateDeviceRows(data, populate) {
+  for (topKey in data) {
+    const keyData = data[topKey];
+    if (typeof keyData === 'object') {
+      for (nextKey in keyData) {
+        populate(topKey + '/' + nextKey, keyData[nextKey]);
+      }
+    } else {
+      populate(topKey, keyData);
+    }
+  }
+}
+
+function ensureDeviceTable(device_root, table_name) {
+  return table_name;
+}
+
+function ensureDeviceRow(device_table, row_name) {
+  return device_table + '.' + row_name;
+}
+
+function ensureDeviceColumn(device_row, column_name) {
+  return device_row + '.' + column_name;
 }
 
 function authenticated(userData) {
