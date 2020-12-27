@@ -63,8 +63,7 @@ function showDeviceDocuments(device_root, device_doc, subsection) {
       updateDeviceRows(doc.data(), (row_key, cell_data) => {
         const row_element = ensureDeviceRow(channel_element, row_key);
         const column_element = ensureDeviceColumn(row_element, subsection);
-        console.log(column_element, cell_data);
-        device_root.innerHTML += cell_data;
+        column_element.innerHTML = cell_data;
       });
     });
   });
@@ -83,16 +82,26 @@ function updateDeviceRows(data, populate) {
   }
 }
 
+function ensureChild(root, selector, type) {
+  const existing = root.querySelector(selector);
+  const actual = existing || document.createElement(type);
+  existing || root.appendChild(actual);
+  return actual;
+}
+
 function ensureDeviceTable(device_root, table_name) {
-  return table_name;
+  const table = ensureChild(device_root, 'table', 'table');
+  return ensureChild(table, 'tbody', 'tbody');
 }
 
 function ensureDeviceRow(device_table, row_name) {
-  return device_table + '.' + row_name;
+  const row = ensureChild(device_table, 'tr', 'tr');
+  return row;
 }
 
 function ensureDeviceColumn(device_row, column_name) {
-  return device_row + '.' + column_name;
+  const cell = ensureChild(device_row, 'td', 'td');
+  return cell;
 }
 
 function authenticated(userData) {
