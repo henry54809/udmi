@@ -29,20 +29,37 @@ function statusUpdate(message, e) {
   document.getElementById('status').innerHTML = message;
 }
 
-function listUsers() {
-  const link_group = document.querySelector('#listings .users');
-  const users_doc = db.collection('users');
-  users_doc.get().then((users_docs) => {
-    users_docs.forEach((user_doc) => {
-      const info_doc = users_doc.doc(user_doc.id).collection('info').doc('profile');
-      info_doc.get().then((snapshot) => {
-        const userLink = document.createElement('a');
-        userLink.innerHTML = snapshot.data().email
-        link_group.appendChild(userLink);
-        link_group.appendChild(document.createElement('p'));
-      });
+function linkWithParam(param, value) {
+  const href = window.location.href
+  const sep = href.indexOf('?') >= 0 ? '&' : '?';
+  return `${href}${sep}${param}=${value}`
+}
+
+function listCollection(collection, root_doc, param) {
+  document.querySelector(`#listings .${collection}`).classList.remove('hidden');
+  const link_group = document.querySelector(`#listings .${collection} .listing`);
+  const collection_doc = root_doc.collection(param);
+  collection_doc.get().then((collection_docs) => {
+    collection_docs.forEach((doc) => {
+      const collectionLink = document.createElement('a');
+      const collection_href = linkWithParam(param, doc.id);
+      collectionLink.setAttribute('href', collection_href);
+      collectionLink.innerHTML = doc.id
+      link_group.appendChild(collectionLink);
+      link_group.appendChild(document.createElement('p'));
     });
-  }).catch((e) => statusUpdate('user list error', e));
+  }).catch((e) => statusUpdate(`${collection} list error`, e));
+}
+
+function listRegistries() {
+  statusUpdate('listing registries');
+  listCollection('registries', db, 'registry');
+}
+
+function listDevices(registry_id) {
+  statusUpdate(`listing devices for registry ${registry_id}`);
+  const registry_doc = db.collection('registry').doc(registry_id);
+  listCollection('devices', registry_doc, 'device');
 }
 
 function showDevice(registry_id, device_id) {
@@ -135,10 +152,12 @@ function setupUser() {
     const registry_id = getQueryParam('registry');
     const device_id = getQueryParam('device');
     statusUpdate('System initialized.');
-    if (device_id) {
-      showDevice(registry_id, device_id);
+    if (!registry_id) {
+      listRegistries();
+    } else if (!device_id) {
+      listDevices(registry_id);
     } else {
-      listUsers();
+      showDevice(registry_id, device_id);
     }
   } catch (e) {
     statusUpdate('Loading error', e);

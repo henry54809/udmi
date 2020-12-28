@@ -2,6 +2,10 @@ div {
     font-family: Arial, Helvetica, sans-serif;
 }
 
+.hidden {
+    display: none;
+}
+
 .udmi-text {
     padding: 5px;
 }
