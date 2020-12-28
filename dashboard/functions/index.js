@@ -16,8 +16,8 @@ const iotClient = new iot.v1.DeviceManagerClient({
 });
 
 function getDeviceDoc(registryId, deviceId) {
-  const reg = db.collection('registry').doc(registryId);
-  const dev = reg.collection('device').doc(deviceId);
+  const reg = db.collection('registries').doc(registryId);
+  const dev = reg.collection('devices').doc(deviceId);
   return dev;
 }
 
@@ -38,8 +38,8 @@ exports.device_target = functions.pubsub.topic('target').onPublish((event) => {
     return null;
   }
 
-  const reg_doc = db.collection('registry').doc(registryId);
-  const dev_doc = reg_doc.collection('device').doc(deviceId);
+  const reg_doc = db.collection('registries').doc(registryId);
+  const dev_doc = reg_doc.collection('devices').doc(deviceId);
   dev_doc.set({
     'updated': timestamp
   }, { merge: true });
@@ -91,11 +91,11 @@ exports.device_config = functions.pubsub.topic('config').onPublish((event) => {
 
   promises = [];
 
-  const reg_doc = db.collection('registry').doc(registryId);
+  const reg_doc = db.collection('registries').doc(registryId);
   promises.concat(reg_doc.set({
     'updated': timestamp
   }, { merge: true }));
-  const dev_doc = reg_doc.collection('device').doc(deviceId);
+  const dev_doc = reg_doc.collection('devices').doc(deviceId);
   promises.concat(dev_doc.set({
     'updated': timestamp
   }, { merge: true }));
@@ -140,8 +140,8 @@ function update_device_config(message, attributes) {
 function consolidateConfig(registryId, deviceId) {
   const projectId = process.env.GCP_PROJECT || process.env.GCLOUD_PROJECT;
   const cloudRegion = 'us-central1';
-  const reg_doc = db.collection('registry').doc(registryId);
-  const dev_doc = reg_doc.collection('device').doc(deviceId);
+  const reg_doc = db.collection('registries').doc(registryId);
+  const dev_doc = reg_doc.collection('devices').doc(deviceId);
   const configs = dev_doc.collection('config');
   const now = Date.now();
   const timestamp = new Date(now).toJSON();
@@ -172,7 +172,7 @@ function consolidateConfig(registryId, deviceId) {
 }
 
 exports.config_update = functions.firestore
-  .document('registry/{registryId}/device/{deviceId}/config/{subFolder}')
+  .document('registries/{registryId}/devices/{deviceId}/config/{subFolder}')
   .onWrite((change, context) => {
     return consolidateConfig(context.params.registryId, context.params.deviceId);
   });

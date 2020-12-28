@@ -38,7 +38,7 @@ function linkWithParam(param, value) {
 function listCollection(collection, root_doc, param) {
   document.querySelector(`#listings .${collection}`).classList.remove('hidden');
   const link_group = document.querySelector(`#listings .${collection} .listing`);
-  const collection_doc = root_doc.collection(param);
+  const collection_doc = root_doc.collection(collection);
   collection_doc.get().then((collection_docs) => {
     collection_docs.forEach((doc) => {
       const collectionLink = document.createElement('a');
@@ -58,15 +58,15 @@ function listRegistries() {
 
 function listDevices(registry_id) {
   statusUpdate(`listing devices for registry ${registry_id}`);
-  const registry_doc = db.collection('registry').doc(registry_id);
+  const registry_doc = db.collection('registries').doc(registry_id);
   listCollection('devices', registry_doc, 'device');
 }
 
 function showDevice(registry_id, device_id) {
   statusUpdate(`Show device ${registry_id}:${device_id}`)
   const device_doc = db
-        .collection('registry').doc(registry_id)
-        .collection('device').doc(device_id);
+        .collection('registries').doc(registry_id)
+        .collection('devices').doc(device_id);
   const device_root = document.getElementById('device_display');
   showDeviceDocuments(device_root, device_doc, 'config');
   showDeviceDocuments(device_root, device_doc, 'state');
@@ -127,23 +127,27 @@ function authenticated(userData) {
     return;
   }
 
+  console.log(`Checking authentiation for user ${userData.uid}`);
   const user_doc = db.collection('users').doc(userData.uid);
-  const perm_doc = user_doc.collection('iam').doc('default');
   const info_doc = user_doc.collection('info').doc('profile');
   const timestamp = new Date().toJSON();
-  info_doc.set({
+  user_doc.set({
+  }).then(function() {
+    return info_doc.set({
       name: userData.displayName,
       email: userData.email,
       updated: timestamp
-  }).then(function() {
-    statusUpdate('User info updated');
-    perm_doc.get().then((doc) => {
-      if (doc.exists && doc.data().enabled) {
-        setupUser();
-      } else {
-        statusUpdate('User not enabled, contact your system administrator.');
-      }
     });
+  }).then(() => {
+    statusUpdate('User info updated');
+    const perm_doc = user_doc.collection('iam').doc('default');
+    return perm_doc.get();
+  }).then((doc) => {
+    if (doc.exists && doc.data().enabled) {
+      setupUser();
+    } else {
+      statusUpdate('User not enabled, contact your system administrator.');
+    }
   }).catch((e) => statusUpdate('Error updating user info', e));
 }
 
