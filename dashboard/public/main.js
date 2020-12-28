@@ -67,7 +67,8 @@ function showDevice(registry_id, device_id) {
   const device_doc = db
         .collection('registries').doc(registry_id)
         .collection('devices').doc(device_id);
-  const device_root = document.getElementById('device_display');
+  const device_root = document.getElementById('device');
+  device_root.classList.remove('hidden');
   showDeviceDocuments(device_root, device_doc, 'config');
   showDeviceDocuments(device_root, device_doc, 'state');
   showDeviceDocuments(device_root, device_doc, 'events');
@@ -76,11 +77,9 @@ function showDevice(registry_id, device_id) {
 function showDeviceDocuments(device_root, device_doc, subsection) {
   device_doc.collection(subsection).onSnapshot((device_docs) => {
     device_docs.forEach((doc) => {
-      const channel_element = ensureDeviceTable(device_root, doc.id);
+      const channel_element = ensureTable(device_root, doc.id);
       updateDeviceRows(doc.data(), (row_key, cell_data) => {
-        const row_element = ensureDeviceRow(channel_element, row_key);
-        const column_element = ensureDeviceColumn(row_element, subsection);
-        column_element.innerHTML = cell_data;
+        setTableValue(channel_element, row_key, subsection, cell_data);
       });
     });
   });
@@ -99,26 +98,48 @@ function updateDeviceRows(data, populate) {
   }
 }
 
-function ensureChild(root, selector, type) {
-  const existing = root.querySelector(selector);
+function ensureTable(device_root, table_name) {
+  const table = ensureChild(device_root, table_name, 'table', 'table');
+  const tbody = ensureChild(table, table_name, 'tbody', 'tbody');
+  setTableValue(tbody, 'hrow', 'hcol', table_name);
+  return tbody;
+}
+
+function setTableValue(table, row, col, value) {
+  const hrow = ensureTableRow(table, 'hrow');
+  const hcol = ensureChild(hrow, col, 'td', 'td');
+  hcol.innerHTML = col;
+  const rowe = ensureTableRow(table, row);
+  const cols = hrow.querySelectorAll('td');
+  for (let index in Object.keys(cols)) {
+    const coln = cols[index].getAttribute('name');
+    ensureChild(rowe, coln, 'td', 'td');
+  }
+  const rowh = ensureChild(rowe, 'hcol', 'td', 'td');
+  rowh.innerHTML = row;
+  const cole = ensureChild(rowe, col, 'td', 'td');
+  cole.innerHTML = value;
+  const rows = table.querySelectorAll('tr');
+  for (let index in Object.keys(rows)) {
+    ensureChild(rows[index], col, 'td', 'td');
+  }
+}
+
+function ensureTableRow(table, row) {
+  const rowe = ensureChild(table, row, 'tr', 'tr');
+  return rowe;
+}
+
+function ensureChild(root, name, selector, type) {
+  const named_selector = `${selector}[name="${name}"]`
+  const existing = root.querySelector(named_selector);
   const actual = existing || document.createElement(type);
+  existing || actual.setAttribute('name', name);
   existing || root.appendChild(actual);
   return actual;
 }
 
-function ensureDeviceTable(device_root, table_name) {
-  const table = ensureChild(device_root, 'table', 'table');
-  return ensureChild(table, 'tbody', 'tbody');
-}
-
-function ensureDeviceRow(device_table, row_name) {
-  const row = ensureChild(device_table, 'tr', 'tr');
-  return row;
-}
-
-function ensureDeviceColumn(device_row, column_name) {
-  const cell = ensureChild(device_row, 'td', 'td');
-  return cell;
+function ensureDeviceCell(tbody, col_name, row_name) {
 }
 
 function authenticated(userData) {
