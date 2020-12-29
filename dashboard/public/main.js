@@ -102,20 +102,17 @@ function makeCellHtml(cell_data) {
   if (typeof cell_data !== 'object') {
     text = cell_data;
   } else for (key in cell_data) {
-    const data = cell_data[key];
-    if (typeof data === 'object') {
-      text += detailsHtml(key, data);
-    } else {
-      text += `${key}: ${cell_data[key]}\n`;
-    }
+    text += detailsHtml(key, cell_data[key]);
   }
   return `<div class="output">${text}</div>`;
 }
 
-function detailsHtml(summary, raw_details) {
-  const json_string = JSON.stringify(raw_details, null, 2);
-  const details = (typeof raw_details === 'object') ? json_string : raw_string;
-  return `<details><summary>${summary}</summary>${details}</details>`
+function detailsHtml(key, data) {
+  if (typeof data !== 'object') {
+    return `${key}: ${data}\n`;
+  }
+  const details = JSON.stringify(data, null, 2);
+  return `<details><summary>${key}</summary>${details}</details>`
 }
 
 function ensureTable(device_root, table_name) {
@@ -146,8 +143,7 @@ function setTableValue(table, row, col, value) {
 }
 
 function ensureTableRow(table, row) {
-  const rowe = ensureChild(table, row, 'tr', 'tr');
-  return rowe;
+  return ensureChild(table, row, 'tr', 'tr');
 }
 
 function ensureChild(root, name, selector, type) {
@@ -157,9 +153,6 @@ function ensureChild(root, name, selector, type) {
   existing || actual.setAttribute('name', name);
   existing || root.appendChild(actual);
   return actual;
-}
-
-function ensureDeviceCell(tbody, col_name, row_name) {
 }
 
 function authenticated(userData) {
