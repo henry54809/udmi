@@ -15,11 +15,24 @@ div {
     padding: 5px;
 }
 
+#device table tr[name=hrow] {
+    font-weight: bold;
+}
+
+#device table td[name=hcol] {
+    font-style: italic;
+}
+
 #device table td {
     border: 1px solid grey;
     padding: 4px;
     background: #DDD;
     min-width: 2em;
+}
+
+#device table .output {
+    font-family: monospace;
+    white-space: pre;
 }
 
 .simple-button {

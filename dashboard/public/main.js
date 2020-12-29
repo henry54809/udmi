@@ -1,5 +1,5 @@
 /**
- * Simple file to handle test results events from DAQ.
+ * Simple file to handle UDMI messages.
  * Uses firebase for data management, and renders straight to HTML.
  */
 
@@ -9,7 +9,6 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   db.settings(settings);
   if (location.hostname === "localhost") {
-    //firebase.auth().useEmulator('http://localhost:9099/');
     db.useEmulator("localhost", 8080);
   }
 });
@@ -90,12 +89,33 @@ function updateDeviceRows(data, populate) {
     const keyData = data[topKey];
     if (typeof keyData === 'object') {
       for (nextKey in keyData) {
-        populate(topKey + '/' + nextKey, keyData[nextKey]);
+        populate(topKey + '/' + nextKey, makeCellHtml(keyData[nextKey]));
       }
     } else {
-      populate(topKey, keyData);
+      populate(topKey, makeCellHtml(keyData));
     }
   }
+}
+
+function makeCellHtml(cell_data) {
+  let text = '';
+  if (typeof cell_data !== 'object') {
+    text = cell_data;
+  } else for (key in cell_data) {
+    const data = cell_data[key];
+    if (typeof data === 'object') {
+      text += detailsHtml(key, data);
+    } else {
+      text += `${key}: ${cell_data[key]}\n`;
+    }
+  }
+  return `<div class="output">${text}</div>`;
+}
+
+function detailsHtml(summary, raw_details) {
+  const json_string = JSON.stringify(raw_details, null, 2);
+  const details = (typeof raw_details === 'object') ? json_string : raw_string;
+  return `<details><summary>${summary}</summary>${details}</details>`
 }
 
 function ensureTable(device_root, table_name) {
