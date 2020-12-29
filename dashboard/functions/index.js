@@ -39,6 +39,9 @@ exports.device_target = functions.pubsub.topic('target').onPublish((event) => {
   }
 
   const reg_doc = db.collection('registries').doc(registryId);
+  reg_doc.set({
+    'updated': timestamp
+  }, { merge: true });
   const dev_doc = reg_doc.collection('devices').doc(deviceId);
   dev_doc.set({
     'updated': timestamp
