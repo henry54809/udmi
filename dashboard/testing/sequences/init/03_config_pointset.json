@@ -1,3 +1,9 @@
 {
-  "hello": "config/pointset"
+  "points": {
+    "return_air_temperature_sensor": {
+    },
+    "nexus_sensor": {
+      "set_value": 23
+    }
+  }
 }
