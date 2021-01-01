@@ -41,6 +41,7 @@ body {
 
 #device .editable {
     background: white;
+    padding: 2px;
 }
 
 #device .dirty {

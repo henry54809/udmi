@@ -19,6 +19,9 @@ function getQueryParam(field) {
   return string ? string[1] : null;
 }
 
+const registry_id = getQueryParam('registry');
+const device_id = getQueryParam('device');
+
 function statusUpdate(message, e) {
   console.log(message);
   if (e) {
@@ -73,20 +76,30 @@ function showDevice(registry_id, device_id) {
   showDeviceDocuments(device_root, device_doc, 'events');
 }
 
-function makeJsonFromDots(path, value) {
-  return makeJsonFromParts(path.split('.'), value);
+function makeObjectFromDots(path, value) {
+  return makeObjectFromParts(path.split('.'), value);
 }
 
-function makeJsonFromParts(parts, value) {
-  const inner = parts.length <= 1
-        ? JSON.stringify(value)
-        : makeJsonFromParts(parts.splice(1), value);
-  return `{ "${parts[0]}": ${inner} }`;
+function makeObjectFromParts(parts, value) {
+  const object = {};
+  object[parts[0]] = parts.length <= 1
+    ? value
+    : makeObjectFromParts(parts.splice(1), value);
+  return object;
 }
 
-function updateConfig(key, value) {
-  const json = makeJsonFromDots(key, value);
-  alert(`update config: ${json}`);
+function updateConfig(subsection, key, value) {
+  const config_doc = db
+        .collection('registries').doc(registry_id)
+        .collection('devices').doc(device_id)
+        .collection('config').doc(subsection);
+  statusUpdate(`Updating ${subsection} with ${key}=${value}`);
+  const update = {};
+  update[key] = value;
+  config_doc
+    .update(update)
+    .then(statusUpdate(`Updated ${subsection} with ${key}=${value}`))
+    .catch((e) => statusUpdate(`Error updating ${subsection}`, e));
 }
 
 function convertToType(value, type) {
@@ -98,7 +111,7 @@ function convertToType(value, type) {
   return value;
 }
 
-function cellKeyPress(event, prefix) {
+function cellKeyPress(event, subsection) {
   if (event.key !== 'Enter') {
     event.target.classList.add('dirty');
     return true;
@@ -106,18 +119,18 @@ function cellKeyPress(event, prefix) {
   const target = event.target.getAttribute('target');
   const type = event.target.getAttribute('type');
   const value = convertToType(event.target.innerHTML, type);
-  updateConfig(`${prefix}.${target}`, value);
+  updateConfig(subsection, target, value);
   event.target.classList.remove('dirty');
   return false;
 }
 
-function makeCellValueEditable(cell, prefix) {
-  const vcell = cell.querySelector('.propvalue');
-  if (vcell) {
+function makeCellValueEditable(cell, subsection) {
+  const vcells = cell.querySelectorAll('.propvalue');
+  vcells.forEach((vcell) => {
     vcell.setAttribute('contenteditable', 'true');
     vcell.classList.add('editable');
-    vcell.onkeypress = (event) => cellKeyPress(event, prefix);
-  }
+    vcell.onkeypress = (event) => cellKeyPress(event, subsection);
+  });
 }
 
 function showDeviceDocuments(device_root, device_doc, subsection) {
@@ -243,8 +256,6 @@ function authenticated(userData) {
 
 function setupUser() {
   try {
-    const registry_id = getQueryParam('registry');
-    const device_id = getQueryParam('device');
     statusUpdate('System initialized.');
     if (!registry_id) {
       listRegistries();
