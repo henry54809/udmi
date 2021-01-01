@@ -73,17 +73,30 @@ function showDevice(registry_id, device_id) {
   showDeviceDocuments(device_root, device_doc, 'events');
 }
 
+function cellKeyPress(event) {
+  if (event.key !== 'Enter') {
+    return true;
+  }
+  alert('update config!');
+  return false;
+}
+
+function makeCellValueEditable(cell) {
+  const vcell = cell.querySelector('.propvalue');
+  if (vcell) {
+    vcell.setAttribute('contenteditable', 'true');
+    vcell.classList.add('editable');
+    vcell.onkeypress = cellKeyPress;
+  }
+}
+
 function showDeviceDocuments(device_root, device_doc, subsection) {
   device_doc.collection(subsection).onSnapshot((device_docs) => {
     device_docs.forEach((doc) => {
       const channel_element = ensureTable(device_root, doc.id);
       updateDeviceRows(doc.data(), (row_key, cell_data) => {
         const cell = setTableValue(channel_element, row_key, subsection, cell_data);
-        if (subsection == 'config') {
-          const vcell = cell.querySelector('.propvalue');
-          vcell.setAttribute('contenteditable', 'true');
-          vcell.classList.add('editable');
-        }
+        subsection == 'config' && makeCellValueEditable(cell);
       });
     });
   });
