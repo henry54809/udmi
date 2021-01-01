@@ -78,7 +78,12 @@ function showDeviceDocuments(device_root, device_doc, subsection) {
     device_docs.forEach((doc) => {
       const channel_element = ensureTable(device_root, doc.id);
       updateDeviceRows(doc.data(), (row_key, cell_data) => {
-        setTableValue(channel_element, row_key, subsection, cell_data);
+        const cell = setTableValue(channel_element, row_key, subsection, cell_data);
+        if (subsection == 'config') {
+          const vcell = cell.querySelector('.propvalue');
+          vcell.setAttribute('contenteditable', 'true');
+          vcell.classList.add('editable');
+        }
       });
     });
   });
@@ -109,7 +114,7 @@ function makeCellHtml(cell_data) {
 
 function detailsHtml(key, data) {
   if (typeof data !== 'object') {
-    return `${key}: ${data}\n`;
+    return `${key}: <div class='propvalue'>${data}</div>\n`;
   }
   const details = JSON.stringify(data, null, 2);
   return `<details><summary>${key}</summary>${details}</details>`
@@ -140,6 +145,7 @@ function setTableValue(table, row, col, value) {
   for (let index in Object.keys(rows)) {
     ensureChild(rows[index], col, 'td', 'td');
   }
+  return cole;
 }
 
 function ensureTableRow(table, row) {
