@@ -73,20 +73,50 @@ function showDevice(registry_id, device_id) {
   showDeviceDocuments(device_root, device_doc, 'events');
 }
 
-function cellKeyPress(event) {
+function makeJsonFromDots(path, value) {
+  return makeJsonFromParts(path.split('.'), value);
+}
+
+function makeJsonFromParts(parts, value) {
+  const inner = parts.length <= 1
+        ? JSON.stringify(value)
+        : makeJsonFromParts(parts.splice(1), value);
+  return `{ "${parts[0]}": ${inner} }`;
+}
+
+function updateConfig(key, value) {
+  const json = makeJsonFromDots(key, value);
+  alert(`update config: ${json}`);
+}
+
+function convertToType(value, type) {
+  if (type == 'boolean') {
+    return value && value != 'false' && value != 'False' && value != '0';
+  } else if (type == 'number') {
+    return Number(value);
+  }
+  return value;
+}
+
+function cellKeyPress(event, prefix) {
   if (event.key !== 'Enter') {
+    event.target.classList.add('dirty');
     return true;
   }
-  alert('update config!');
+  const target = event.target.getAttribute('target');
+  const type = event.target.getAttribute('type');
+  const value = convertToType(event.target.innerHTML, type);
+  updateConfig(`${prefix}.${target}`, value);
+  event.target.classList.remove('dirty');
   return false;
 }
 
-function makeCellValueEditable(cell) {
+function makeCellValueEditable(cell, prefix) {
   const vcell = cell.querySelector('.propvalue');
   if (vcell) {
     vcell.setAttribute('contenteditable', 'true');
     vcell.classList.add('editable');
-    vcell.onkeypress = cellKeyPress;
+    vcell.onkeypress = (event) => cellKeyPress(event, prefix);
   }
 }
 
@@ -96,7 +126,7 @@ function showDeviceDocuments(device_root, device_doc, subsection) {
       const channel_element = ensureTable(device_root, doc.id);
       updateDeviceRows(doc.data(), (row_key, cell_data) => {
         const cell = setTableValue(channel_element, row_key, subsection, cell_data);
-        subsection == 'config' && makeCellValueEditable(cell);
+        subsection == 'config' && makeCellValueEditable(cell, doc.id);
       });
     });
   });
@@ -107,27 +137,34 @@ function updateDeviceRows(data, populate) {
     const keyData = data[topKey];
     if (typeof keyData === 'object') {
       for (nextKey in keyData) {
-        populate(topKey + '/' + nextKey, makeCellHtml(keyData[nextKey]));
+        const row_key = `${topKey}.${nextKey}`;
+        populate(row_key, makeCellHtml(keyData[nextKey], row_key));
       }
     } else {
-      populate(topKey, makeCellHtml(keyData));
+      populate(topKey, makeCellHtml(keyData, topKey));
     }
   }
 }
 
-function makeCellHtml(cell_data) {
+function makeCellHtml(cell_data, target) {
   let text = '';
   if (typeof cell_data !== 'object') {
-    text = cell_data;
+    text = propHtml(cell_data, target);
   } else for (key in cell_data) {
-    text += detailsHtml(key, cell_data[key]);
+    text += detailsHtml(key, cell_data[key], target);
   }
   return `<div class="output">${text}</div>`;
 }
 
-function detailsHtml(key, data) {
+function propHtml(data, target) {
+  const type = typeof data;
+  return `<div class='propvalue' target="${target}" type="${type}">${data}</div>\n`;
+}
+
+function detailsHtml(key, data, target) {
   if (typeof data !== 'object') {
-    return `${key}: <div class='propvalue'>${data}</div>\n`;
+    const key_target = `${target}.${key}`;
+    return `${key}: ${propHtml(data, key_target)}`;
   }
   const details = JSON.stringify(data, null, 2);
   return `<details><summary>${key}</summary>${details}</details>`

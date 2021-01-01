@@ -43,6 +43,11 @@ body {
     background: white;
 }
 
+#device .dirty {
+    background: #FAF;
+}
+
+
 .simple-button {
     padding: 5px;
     background: #ddd;
