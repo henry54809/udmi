@@ -71,9 +71,9 @@ function showDevice(registry_id, device_id) {
         .collection('devices').doc(device_id);
   const device_root = document.getElementById('device');
   device_root.classList.remove('hidden');
-  showDeviceDocuments(device_root, device_doc, 'config');
-  showDeviceDocuments(device_root, device_doc, 'state');
-  showDeviceDocuments(device_root, device_doc, 'events');
+  showDeviceDocuments(device_root, device_doc, 'configs', 'config');
+  showDeviceDocuments(device_root, device_doc, 'states', 'state');
+  showDeviceDocuments(device_root, device_doc, 'events', 'event');
 }
 
 function makeObjectFromDots(path, value) {
@@ -133,12 +133,12 @@ function makeCellValueEditable(cell, subsection) {
   });
 }
 
-function showDeviceDocuments(device_root, device_doc, subsection) {
+function showDeviceDocuments(device_root, device_doc, subsection, header) {
   device_doc.collection(subsection).onSnapshot((device_docs) => {
     device_docs.forEach((doc) => {
       const channel_element = ensureTable(device_root, doc.id);
       updateDeviceRows(doc.data(), (row_key, cell_data) => {
-        const cell = setTableValue(channel_element, row_key, subsection, cell_data);
+        const cell = setTableValue(channel_element, row_key, header, cell_data);
         subsection == 'config' && makeCellValueEditable(cell, doc.id);
       });
     });

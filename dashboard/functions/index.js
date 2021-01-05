@@ -71,7 +71,7 @@ exports.device_state = functions.pubsub.topic('state').onPublish((event) => {
       attributes.subFolder = block;
       promises.concat(publishPubsubMessage('target', subMsg, attributes));
       device_doc = getDeviceDoc(registryId, deviceId);
-      state_block = device_doc.collection('state').doc(block);
+      state_block = device_doc.collection('states').doc(block);
       promises.concat(state_block.set(subMsg));
     }
   }
@@ -102,7 +102,7 @@ exports.device_config = functions.pubsub.topic('config').onPublish((event) => {
   promises.concat(dev_doc.set({
     'updated': timestamp
   }, { merge: true }));
-  const config_doc = dev_doc.collection('config').doc(subFolder);
+  const config_doc = dev_doc.collection('configs').doc(subFolder);
   promises.concat(config_doc.set(msgObject));
 
   attributes.subType = 'config';
@@ -145,7 +145,7 @@ function consolidateConfig(registryId, deviceId) {
   const cloudRegion = 'us-central1';
   const reg_doc = db.collection('registries').doc(registryId);
   const dev_doc = reg_doc.collection('devices').doc(deviceId);
-  const configs = dev_doc.collection('config');
+  const configs = dev_doc.collection('configs');
   const now = Date.now();
   const timestamp = new Date(now).toJSON();
 
@@ -175,7 +175,7 @@ function consolidateConfig(registryId, deviceId) {
 }
 
 exports.config_update = functions.firestore
-  .document('registries/{registryId}/devices/{deviceId}/config/{subFolder}')
+  .document('registries/{registryId}/devices/{deviceId}/configs/{subFolder}')
   .onWrite((change, context) => {
     return consolidateConfig(context.params.registryId, context.params.deviceId);
   });
