@@ -15,10 +15,22 @@ const iotClient = new iot.v1.DeviceManagerClient({
   // optional auth parameters.
 });
 
-function getDeviceDoc(registryId, deviceId) {
-  const reg = db.collection('registries').doc(registryId);
-  const dev = reg.collection('devices').doc(deviceId);
-  return dev;
+function recordMessage(registryId, deviceId, subType, subFolder, message) {
+  promises = [];
+  const timestamp = new Date().toJSON();
+
+  const reg_doc = db.collection('registries').doc(registryId);
+  promises.concat(reg_doc.set({
+    'updated': timestamp
+  }, { merge: true }));
+  const dev_doc = reg_doc.collection('devices').doc(deviceId);
+  promises.concat(dev_doc.set({
+    'updated': timestamp
+  }, { merge: true }));
+  const config_doc = dev_doc.collection(subType).doc(subFolder);
+  promises.concat(config_doc.set(message));
+
+  return promises;
 }
 
 exports.device_target = functions.pubsub.topic('target').onPublish((event) => {
@@ -29,8 +41,6 @@ exports.device_target = functions.pubsub.topic('target').onPublish((event) => {
   const base64 = event.data;
   const msgString = Buffer.from(base64, 'base64').toString();
   const msgObject = JSON.parse(msgString);
-  const now = Date.now();
-  const timestamp = new Date(now).toJSON();
 
   console.log('target', registryId, deviceId, subType, subFolder, msgObject);
 
@@ -38,19 +48,9 @@ exports.device_target = functions.pubsub.topic('target').onPublish((event) => {
     return null;
   }
 
-  const reg_doc = db.collection('registries').doc(registryId);
-  reg_doc.set({
-    'updated': timestamp
-  }, { merge: true });
-  const dev_doc = reg_doc.collection('devices').doc(deviceId);
-  dev_doc.set({
-    'updated': timestamp
-  }, { merge: true });
-  const folder_doc = dev_doc.collection('events').doc(subFolder);
-  folder_doc.set({
-    'updated': timestamp
-  }, { merge: true });
-  return folder_doc.set(msgObject);
+  promises = recordMessage(registryId, deviceId, subType, subFolder, msgObject);
+
+  return Promise.all(promises);
 });
 
 exports.device_state = functions.pubsub.topic('state').onPublish((event) => {
@@ -70,9 +70,7 @@ exports.device_state = functions.pubsub.topic('state').onPublish((event) => {
       console.log('state -> target', registryId, deviceId, block);
       attributes.subFolder = block;
       promises.concat(publishPubsubMessage('target', subMsg, attributes));
-      device_doc = getDeviceDoc(registryId, deviceId);
-      state_block = device_doc.collection('states').doc(block);
-      promises.concat(state_block.set(subMsg));
+      promises.concat(recordMessage(registryId, deviceId, 'states', block, subMsg));
     }
   }
 
@@ -86,24 +84,12 @@ exports.device_config = functions.pubsub.topic('config').onPublish((event) => {
   const subFolder = attributes.subFolder || 'unknown';
   const base64 = event.data;
   const now = Date.now();
-  const timestamp = new Date(now).toJSON();
   const msgString = Buffer.from(base64, 'base64').toString();
   const msgObject = JSON.parse(msgString);
 
   console.log('config', registryId, deviceId, subFolder, msgObject);
 
-  promises = [];
-
-  const reg_doc = db.collection('registries').doc(registryId);
-  promises.concat(reg_doc.set({
-    'updated': timestamp
-  }, { merge: true }));
-  const dev_doc = reg_doc.collection('devices').doc(deviceId);
-  promises.concat(dev_doc.set({
-    'updated': timestamp
-  }, { merge: true }));
-  const config_doc = dev_doc.collection('configs').doc(subFolder);
-  promises.concat(config_doc.set(msgObject));
+  promises = recordMessage(registryId, deviceId, 'configs', subFolder, msgObject);
 
   attributes.subType = 'config';
   promises.concat(publishPubsubMessage('target', msgObject, attributes));

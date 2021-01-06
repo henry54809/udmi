@@ -92,7 +92,7 @@ function updateConfig(subsection, key, value) {
   const config_doc = db
         .collection('registries').doc(registry_id)
         .collection('devices').doc(device_id)
-        .collection('config').doc(subsection);
+        .collection('configs').doc(subsection);
   statusUpdate(`Updating ${subsection} with ${key}=${value}`);
   const update = {};
   update[key] = value;
@@ -139,7 +139,7 @@ function showDeviceDocuments(device_root, device_doc, subsection, header) {
       const channel_element = ensureTable(device_root, doc.id);
       updateDeviceRows(doc.data(), (row_key, cell_data) => {
         const cell = setTableValue(channel_element, row_key, header, cell_data);
-        subsection == 'config' && makeCellValueEditable(cell, doc.id);
+        subsection == 'configs' && makeCellValueEditable(cell, doc.id);
       });
     });
   });
