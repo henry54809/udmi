@@ -7,6 +7,7 @@ const admin = require('firebase-admin');
 const { PubSub } = require(`@google-cloud/pubsub`);
 const iot = require('@google-cloud/iot');
 const pubsub = new PubSub();
+const REFLECT_REGISTRY = "UDMS-REFLECT";
 
 admin.initializeApp(functions.config().firebase);
 const db = admin.firestore();
@@ -15,40 +16,67 @@ const iotClient = new iot.v1.DeviceManagerClient({
   // optional auth parameters.
 });
 
-function recordMessage(registryId, deviceId, subType, subFolder, message) {
-  promises = [];
+function recordMessage(attributes, message) {
+  const registryId = attributes.deviceRegistryId;
+  const deviceId = attributes.deviceId;
+  const subType = attributes.subType || 'events';
+  const subFolder = attributes.subFolder || 'unknown';
+
+  const promises = [];
   const timestamp = new Date().toJSON();
 
   const reg_doc = db.collection('registries').doc(registryId);
-  promises.concat(reg_doc.set({
+  promises.push(reg_doc.set({
     'updated': timestamp
   }, { merge: true }));
   const dev_doc = reg_doc.collection('devices').doc(deviceId);
-  promises.concat(dev_doc.set({
+  promises.push(dev_doc.set({
     'updated': timestamp
   }, { merge: true }));
   const config_doc = dev_doc.collection(subType).doc(subFolder);
-  promises.concat(config_doc.set(message));
+  promises.push(config_doc.set(message));
+
+  promises.push(sendCommand(REFLECT_REGISTRY, registryId, subType, subFolder, message));
 
   return promises;
 }
 
+function sendCommand(registryId, deviceId, subType, subFolder, message) {
+  const projectId = process.env.GCP_PROJECT || process.env.GCLOUD_PROJECT;
+  const cloudRegion = 'us-central1';
+
+  const formattedName =
+        iotClient.devicePath(projectId, cloudRegion, registryId, deviceId);
+
+  const sendFolder = `${subFolder}/${subType}`;
+
+  console.log('command', formattedName, sendFolder, message);
+
+  const binaryData = Buffer.from(JSON.stringify(message));
+  const request = {
+    name: formattedName,
+    subfolder: sendFolder,
+    binaryData: binaryData
+  };
+
+  return iotClient.sendCommandToDevice(request)
+    .catch((e) => {
+      console.error('error sending command:', e.details);
+    });
+}
+
 exports.device_target = functions.pubsub.topic('target').onPublish((event) => {
-  const registryId = event.attributes.deviceRegistryId;
-  const deviceId = event.attributes.deviceId;
-  const subType = event.attributes.subType || 'events';
-  const subFolder = event.attributes.subFolder || 'unknown';
+  const attributes = event.attributes;
+  const subType = attributes.subType || 'events';
   const base64 = event.data;
   const msgString = Buffer.from(base64, 'base64').toString();
   const msgObject = JSON.parse(msgString);
-
-  console.log('target', registryId, deviceId, subType, subFolder, msgObject);
 
   if (subType != 'events') {
     return null;
   }
 
-  promises = recordMessage(registryId, deviceId, subType, subFolder, msgObject);
+  promises = recordMessage(attributes, msgObject);
 
   return Promise.all(promises);
 });
@@ -61,16 +89,17 @@ exports.device_state = functions.pubsub.topic('state').onPublish((event) => {
   const msgString = Buffer.from(base64, 'base64').toString();
   const msgObject = JSON.parse(msgString);
 
-  promises = [];
+  let promises = [];
 
-  attributes.subType = 'state';
+  attributes.subType = 'states';
   for (var block in msgObject) {
     let subMsg = msgObject[block];
     if (typeof subMsg === 'object') {
       console.log('state -> target', registryId, deviceId, block);
       attributes.subFolder = block;
-      promises.concat(publishPubsubMessage('target', subMsg, attributes));
-      promises.concat(recordMessage(registryId, deviceId, 'states', block, subMsg));
+      promises.push(publishPubsubMessage('target', attributes, subMsg));
+      const new_promises = recordMessage(attributes, subMsg);
+      promises.push(...new_promises);
     }
   }
 
@@ -89,10 +118,10 @@ exports.device_config = functions.pubsub.topic('config').onPublish((event) => {
 
   console.log('config', registryId, deviceId, subFolder, msgObject);
 
-  promises = recordMessage(registryId, deviceId, 'configs', subFolder, msgObject);
+  attributes.subType = 'configs';
 
-  attributes.subType = 'config';
-  promises.concat(publishPubsubMessage('target', msgObject, attributes));
+  const promises = recordMessage(attributes, msgObject);
+  promises.push(publishPubsubMessage('target', attributes, msgObject));
 
   return Promise.all(promises);
 });
@@ -107,7 +136,7 @@ function update_device_config(message, attributes) {
   const msgString = JSON.stringify(message);
   const binaryData = Buffer.from(msgString);
 
-  console.log('format', projectId, cloudRegion, registryId, deviceId);
+  console.log('update_config', projectId, cloudRegion, registryId, deviceId);
   const formattedName = iotClient.devicePath(
     projectId,
     cloudRegion,
@@ -166,7 +195,7 @@ exports.config_update = functions.firestore
     return consolidateConfig(context.params.registryId, context.params.deviceId);
   });
 
-function publishPubsubMessage(topicName, data, attributes) {
+function publishPubsubMessage(topicName, attributes, data) {
   const dataBuffer = Buffer.from(JSON.stringify(data));
   var attr_copy = Object.assign({}, attributes);
 
