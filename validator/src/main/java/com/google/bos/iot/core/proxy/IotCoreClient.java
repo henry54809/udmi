@@ -24,17 +24,20 @@ public class IotCoreClient {
   private static final String IOT_KEY_ALGORITHM = "RS256";
   private static final String UDMS_REFLECT = "UDMS-REFLECT";
   private static final String WAS_BASE_64 = "wasBase64";
+  private static final String MOCK_DEVICE_NUM_ID = "123456789101112";
 
   private final BlockingQueue<MessageBundle> messages = new LinkedBlockingDeque<>();
 
-  final MqttPublisher mqttPublisher;
-  final String subscriptionId;
-  final String siteName;
+  private final MqttPublisher mqttPublisher;
+  private final String subscriptionId;
+  private final String siteName;
+  private final String projectId;
   private boolean active;
 
   public IotCoreClient(String projectId, CloudIotConfig iotConfig, String keyFile) {
     byte[] keyBytes = getFileBytes(keyFile);
     siteName = iotConfig.registry_id;
+    this.projectId = projectId;
     mqttPublisher = new MqttPublisher(projectId, iotConfig.cloud_region, UDMS_REFLECT,
         siteName, keyBytes, IOT_KEY_ALGORITHM, this::messageHandler, this::errorHandler);
     subscriptionId =
@@ -52,24 +55,27 @@ public class IotCoreClient {
 
       final String data = new String(base64 ? Base64.decodeBase64(rawData) : rawData);
       asMap = OBJECT_MAPPER.readValue(data, TreeMap.class);
+      String category = parseMessageTopic(topic, attributes);
+      if (!"commands".equals(category)) {
+        return;
+      }
     } catch (Exception e) {
-      asMap = new ErrorContainer(e, payload);
+      asMap = new ErrorContainer(e, topic, payload);
     }
-
-    parseMessageTopic(topic, attributes);
 
     MessageBundle messageBundle = new MessageBundle();
     messageBundle.attributes = attributes;
     messageBundle.message = asMap;
+
     messages.offer(messageBundle);
   }
 
-  private void parseMessageTopic(String topic, Map<String, String> attributes) {
+  private String parseMessageTopic(String topic, Map<String, String> attributes) {
     String[] parts = topic.substring(1).split("/");
     assert "devices".equals(parts[0]);
     assert siteName.equals(parts[1]);
     String messageCategory = parts[2];
-    attributes.put("category", messageCategory);
+    attributes.put("deviceRegistryId", siteName);
     if (messageCategory.equals("commands")) {
       assert "devices".equals(parts[3]);
       attributes.put( "deviceId", parts[4]);
@@ -79,6 +85,9 @@ public class IotCoreClient {
     } else {
       assert parts.length == 3;
     }
+    attributes.put("projectId", projectId);
+    attributes.put("deviceNumId", MOCK_DEVICE_NUM_ID);
+    return messageCategory;
   }
 
   private void errorHandler(MqttPublisher mqttPublisher, Throwable throwable) {
@@ -119,8 +128,9 @@ public class IotCoreClient {
   }
 
   static class ErrorContainer extends TreeMap<String, Object> {
-    ErrorContainer(Exception e, String message) {
+    ErrorContainer(Exception e, String topic, String message) {
       put("exception", e.toString());
+      put("topic", topic);
       put("message", message);
     }
   }
