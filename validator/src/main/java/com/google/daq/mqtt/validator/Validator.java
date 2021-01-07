@@ -1,10 +1,10 @@
 package com.google.daq.mqtt.validator;
 
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.util.ISO8601DateFormat;
+import com.google.bos.iot.core.proxy.IotCoreClient;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
@@ -14,6 +14,7 @@ import com.google.daq.mqtt.registrar.UdmiSchema.Config;
 import com.google.daq.mqtt.registrar.UdmiSchema.PointsetMessage;
 import com.google.daq.mqtt.util.*;
 import com.google.daq.mqtt.util.ExceptionMap.ErrorTree;
+import java.util.function.BiConsumer;
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.ValidationException;
 import org.everit.json.schema.loader.SchemaClient;
@@ -65,6 +66,7 @@ public class Validator {
   private static final String SUB_FOLDER_KEY = "subFolder";
   private static final String STATE_SUBFOLER = "state";
   private static final String DEVICE_ID_KEY = "deviceId";
+  private static final String RSA_PRIVATE_PKCS8 = "rsa_private.pkcs8";
   private final String projectId;
   private FirestoreDataSink dataSink;
   private File schemaRoot;
@@ -112,10 +114,6 @@ public class Validator {
       System.exit(-1);
     }
     System.exit(0);
-  }
-
-  private void validateReflector(String instName) {
-    throw new RuntimeException("Not yet implemented");
   }
 
   public Validator(String projectId) {
@@ -174,7 +172,7 @@ public class Validator {
     }
   }
 
-  private void validatePubSub(String instName) {
+  private Map<String, Schema> getSchemaMap() {
     Map<String, Schema> schemaMap = new TreeMap<>();
     for (File schemaFile : makeFileList(schemaRoot)) {
       Schema schema = getSchema(schemaFile);
@@ -186,17 +184,41 @@ public class Validator {
     if (!schemaMap.containsKey(ENVELOPE_SCHEMA_ID)) {
       throw new RuntimeException("Missing schema for attribute validation: " + ENVELOPE_SCHEMA_ID);
     }
+    return schemaMap;
+  }
+
+  private BiConsumer<Map<String, Object>, Map<String, String>> messageValidator() {
+    Map<String, Schema> schemaMap = getSchemaMap();
     dataSink = new FirestoreDataSink(projectId);
     System.out.println("Results will be uploaded to " + dataSink.getViewUrl());
     OUT_BASE_FILE.mkdirs();
     System.out.println("Also found in such directories as " + OUT_BASE_FILE.getAbsolutePath());
     System.out.println("Generating report file in " + METADATA_REPORT_FILE.getAbsolutePath());
+
+    return (message, attributes) -> validateMessage(schemaMap, message, attributes);
+  }
+
+  private void validatePubSub(String instName) {
+    BiConsumer<Map<String, Object>, Map<String, String>> validator = messageValidator();
     PubSubClient client = new PubSubClient(projectId, instName);
     System.out.println("Entering pubsub message loop on " + client.getSubscriptionId());
     while(client.isActive()) {
       try {
-        client.processMessage(
-            (message, attributes) -> validateMessage(schemaMap, message, attributes));
+        client.processMessage(validator);
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+    }
+    System.out.println("Message loop complete");
+  }
+
+  private void validateReflector(String instName) {
+    BiConsumer<Map<String, Object>, Map<String, String>> validator = messageValidator();
+    IotCoreClient client = new IotCoreClient(projectId, cloudIotConfig, RSA_PRIVATE_PKCS8);
+    System.out.println("Entering iot core message loop on " + client.getSubscriptionId());
+    while(client.isActive()) {
+      try {
+        client.processMessage(validator);
       } catch (Exception e) {
         e.printStackTrace();
       }

@@ -44,6 +44,7 @@ class MqttPublisher implements MessagePublisher {
   private static final int MQTT_QOS = 1;
   private static final String CONFIG_UPDATE_TOPIC_FMT = "/devices/%s/config";
   private static final String ERROR_TOPIC_FMT = "/devices/%s/errors";
+  private static final String COMMAND_TOPIC_FMT = "/devices/%s/commands/#";
   private static final String UNUSED_ACCOUNT_NAME = "unused";
   private static final int INITIALIZE_TIME_MS = 20000;
 
@@ -201,6 +202,7 @@ class MqttPublisher implements MessagePublisher {
       }
       mqttClient.setCallback(new MqttCallbackHandler());
       mqttClient.setTimeToWait(INITIALIZE_TIME_MS);
+      mqttClient.setManualAcks(false);
 
       mqttConnectOptions = new MqttConnectOptions();
       // Note that the the Google Cloud IoT only supports MQTT 3.1.1, and Paho requires that we
@@ -209,7 +211,6 @@ class MqttPublisher implements MessagePublisher {
       mqttConnectOptions.setMqttVersion(MqttConnectOptions.MQTT_VERSION_3_1_1);
       mqttConnectOptions.setUserName(UNUSED_ACCOUNT_NAME);
       mqttConnectOptions.setMaxInflight(PUBLISH_THREAD_COUNT * 2);
-
       connectAndSetupMqtt();
       connectWait.release();
     } catch (Exception e) {
@@ -229,6 +230,7 @@ class MqttPublisher implements MessagePublisher {
     LOG.info(deviceId + " adding subscriptions");
     subscribeToUpdates(deviceId);
     subscribeToErrors(deviceId);
+    subscribeToCommands(deviceId);
     LOG.info(deviceId + " done with setup connection");
   }
 
@@ -276,6 +278,15 @@ class MqttPublisher implements MessagePublisher {
 
   private void subscribeToErrors(String deviceId) {
     String updateTopic = String.format(ERROR_TOPIC_FMT, deviceId);
+    try {
+      mqttClient.subscribe(updateTopic);
+    } catch (MqttException e) {
+      throw new RuntimeException("While subscribing to MQTT topic " + updateTopic, e);
+    }
+  }
+
+  private void subscribeToCommands(String deviceId) {
+    String updateTopic = String.format(COMMAND_TOPIC_FMT, deviceId);
     try {
       mqttClient.subscribe(updateTopic);
     } catch (MqttException e) {

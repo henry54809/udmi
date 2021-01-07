@@ -4,6 +4,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 import com.google.api.services.cloudiot.v1.model.Device;
 import com.google.cloud.ServiceOptions;
+import com.google.daq.mqtt.util.CloudIotConfig;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.Map;
