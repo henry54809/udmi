@@ -45,6 +45,7 @@ class MqttPublisher implements MessagePublisher {
   private static final String CONFIG_UPDATE_TOPIC_FMT = "/devices/%s/config";
   private static final String ERROR_TOPIC_FMT = "/devices/%s/errors";
   private static final String COMMAND_TOPIC_FMT = "/devices/%s/commands/#";
+  private static final int COMMANDS_QOS = 0;
   private static final String UNUSED_ACCOUNT_NAME = "unused";
   private static final int INITIALIZE_TIME_MS = 20000;
 
@@ -53,7 +54,7 @@ class MqttPublisher implements MessagePublisher {
   private static final String CLIENT_ID_FORMAT = "projects/%s/locations/%s/registries/%s/devices/%s";
   private static final int PUBLISH_THREAD_COUNT = 10;
   private static final String ATTACH_MESSAGE_FORMAT = "/devices/%s/attach";
-  public static final int TOKEN_EXPIRATION_SEC = 60 * 60 * 1;
+  private static final int TOKEN_EXPIRATION_SEC = 60 * 60 * 1;
   private final int TOKEN_EXPIRATION_MS = TOKEN_EXPIRATION_SEC * 1000;
 
   private final ExecutorService publisherExecutor =
@@ -288,7 +289,7 @@ class MqttPublisher implements MessagePublisher {
   private void subscribeToCommands(String deviceId) {
     String updateTopic = String.format(COMMAND_TOPIC_FMT, deviceId);
     try {
-      mqttClient.subscribe(updateTopic);
+      mqttClient.subscribe(updateTopic, COMMANDS_QOS);
     } catch (MqttException e) {
       throw new RuntimeException("While subscribing to MQTT topic " + updateTopic, e);
     }

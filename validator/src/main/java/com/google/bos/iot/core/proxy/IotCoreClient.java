@@ -1,12 +1,10 @@
 package com.google.bos.iot.core.proxy;
 
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.google.api.client.util.Base64;
 import com.google.daq.mqtt.util.CloudIotConfig;
-import com.google.pubsub.v1.PubsubMessage;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -31,12 +29,14 @@ public class IotCoreClient {
 
   final MqttPublisher mqttPublisher;
   final String subscriptionId;
+  final String siteName;
   private boolean active;
 
   public IotCoreClient(String projectId, CloudIotConfig iotConfig, String keyFile) {
     byte[] keyBytes = getFileBytes(keyFile);
+    siteName = iotConfig.registry_id;
     mqttPublisher = new MqttPublisher(projectId, iotConfig.cloud_region, UDMS_REFLECT,
-        iotConfig.site_name, keyBytes, IOT_KEY_ALGORITHM, this::messageHandler, this::errorHandler);
+        siteName, keyBytes, IOT_KEY_ALGORITHM, this::messageHandler, this::errorHandler);
     subscriptionId =
         String.format("%s/%s/%s/%s", projectId, iotConfig.cloud_region, UDMS_REFLECT, iotConfig.site_name);
     active = true;
@@ -56,13 +56,29 @@ public class IotCoreClient {
       asMap = new ErrorContainer(e, payload);
     }
 
-    String[] parts = topic.split("/".substring(1));
-    attributes.put("deviceId", parts[1]);
+    parseMessageTopic(topic, attributes);
 
     MessageBundle messageBundle = new MessageBundle();
     messageBundle.attributes = attributes;
     messageBundle.message = asMap;
     messages.offer(messageBundle);
+  }
+
+  private void parseMessageTopic(String topic, Map<String, String> attributes) {
+    String[] parts = topic.substring(1).split("/");
+    assert "devices".equals(parts[0]);
+    assert siteName.equals(parts[1]);
+    String messageCategory = parts[2];
+    attributes.put("category", messageCategory);
+    if (messageCategory.equals("commands")) {
+      assert "devices".equals(parts[3]);
+      attributes.put( "deviceId", parts[4]);
+      attributes.put("subFolder", parts[5]);
+      attributes.put("subType", parts[6]);
+      assert parts.length == 7;
+    } else {
+      assert parts.length == 3;
+    }
   }
 
   private void errorHandler(MqttPublisher mqttPublisher, Throwable throwable) {
