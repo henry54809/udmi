@@ -43,6 +43,8 @@ public class Validator {
   private static final String SCHEMA_VALIDATION_FORMAT = "Validating %d schemas";
   private static final String TARGET_VALIDATION_FORMAT = "Validating %d files against %s";
   private static final String PUBSUB_MARKER = "pubsub";
+  private static final String FILES_MARKER = "files";
+  private static final String REFLECT_MARKER = "reflect";
   private static final File OUT_BASE_FILE = new File("out");
   private static final String DEVICE_FILE_FORMAT = "devices/%s";
   private static final String ATTRIBUTE_FILE_FORMAT = "%s.attr";
@@ -89,10 +91,18 @@ public class Validator {
       if (!NO_SITE.equals(siteDir)) {
         validator.setSiteDir(siteDir);
       }
-      if (targetSpec.equals(PUBSUB_MARKER)) {
-        validator.validatePubSub(instName);
-      } else {
-        validator.validateFilesOutput(targetSpec);
+      switch(targetSpec) {
+        case PUBSUB_MARKER:
+          validator.validatePubSub(instName);
+          break;
+        case FILES_MARKER:
+          validator.validateFilesOutput(instName);
+          break;
+        case REFLECT_MARKER:
+          validator.validateReflector(instName);
+          break;
+        default:
+          throw new RuntimeException("Unknown target spec " + targetSpec);
       }
     } catch (ExceptionMap | ValidationException processingException) {
       System.exit(2);
@@ -102,6 +112,10 @@ public class Validator {
       System.exit(-1);
     }
     System.exit(0);
+  }
+
+  private void validateReflector(String instName) {
+    throw new RuntimeException("Not yet implemented");
   }
 
   public Validator(String projectId) {
@@ -215,7 +229,7 @@ public class Validator {
   }
 
   private boolean validateUpdate(Map<String, Schema> schemaMap, Map<String, Object> message,
-            Map<String, String> attributes) {
+      Map<String, String> attributes) {
 
     String registryId = attributes.get(DEVICE_REGISTRY_ID_KEY);
     if (cloudIotConfig != null && !cloudIotConfig.registry_id.equals(registryId)) {
