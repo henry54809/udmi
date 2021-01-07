@@ -36,26 +36,26 @@ function recordMessage(attributes, message) {
   const config_doc = dev_doc.collection(subType).doc(subFolder);
   promises.push(config_doc.set(message));
 
-  promises.push(sendCommand(REFLECT_REGISTRY, registryId, subType, subFolder, message));
+  const commandFolder = `devices/${deviceId}/${subFolder}/${subType}`;
+
+  promises.push(sendCommand(REFLECT_REGISTRY, registryId, commandFolder, message));
 
   return promises;
 }
 
-function sendCommand(registryId, deviceId, subType, subFolder, message) {
+function sendCommand(registryId, deviceId, subFolder, message) {
   const projectId = process.env.GCP_PROJECT || process.env.GCLOUD_PROJECT;
   const cloudRegion = 'us-central1';
 
   const formattedName =
         iotClient.devicePath(projectId, cloudRegion, registryId, deviceId);
 
-  const sendFolder = `${subFolder}/${subType}`;
-
-  console.log('command', formattedName, sendFolder, message);
+  console.log('command', formattedName, subFolder, message);
 
   const binaryData = Buffer.from(JSON.stringify(message));
   const request = {
     name: formattedName,
-    subfolder: sendFolder,
+    subfolder: subFolder,
     binaryData: binaryData
   };
 
