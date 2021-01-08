@@ -79,6 +79,7 @@ public class Validator {
   public static final File METADATA_REPORT_FILE = new File(OUT_BASE_FILE, REPORT_JSON_FILENAME);
   private Set<String> ignoredRegistries = new HashSet();
   private CloudIotManager cloudIotManager;
+  private String siteDir;
 
   public static void main(String[] args) {
     if (args.length != 5) {
@@ -96,6 +97,7 @@ public class Validator {
       switch(targetSpec) {
         case PUBSUB_MARKER:
           validator.validatePubSub(instName);
+          validator.initializeCloudIoT();
           break;
         case FILES_MARKER:
           validator.validateFilesOutput(instName);
@@ -121,6 +123,7 @@ public class Validator {
   }
 
   private void setSiteDir(String siteDir) {
+    this.siteDir = siteDir;
     File cloudConfig = new File(siteDir, "cloud_iot_config.json");
     try {
       cloudIotConfig = ConfigUtil.readCloudIotConfig(cloudConfig);
@@ -128,12 +131,10 @@ public class Validator {
       throw new RuntimeException("While reading config file " + cloudConfig.getAbsolutePath(), e);
     }
 
-    try {
-      this.cloudIotManager = new CloudIotManager(projectId, cloudConfig, "foobar");
-    } catch (Exception e) {
-      throw new RuntimeException("While initializing cloud IoT for project " + projectId, e);
-    }
+    initializeExpectedDevices(siteDir);
+  }
 
+  private void initializeExpectedDevices(String siteDir) {
     File devicesDir = new File(siteDir, DEVICES_SUBDIR);
     if (!devicesDir.exists()) {
       System.out.println("Directory not found, assuming no devices: " + devicesDir.getAbsolutePath());
@@ -156,6 +157,15 @@ public class Validator {
     } catch (Exception e) {
       throw new RuntimeException(
           "While loading devices directory " + devicesDir.getAbsolutePath(), e);
+    }
+  }
+
+  private void initializeCloudIoT() {
+    File cloudConfig = new File(siteDir, "cloud_iot_config.json");
+    try {
+      this.cloudIotManager = new CloudIotManager(projectId, cloudConfig, "foobar");
+    } catch (Exception e) {
+      throw new RuntimeException("While initializing cloud IoT for project " + projectId, e);
     }
   }
 
@@ -415,6 +425,10 @@ public class Validator {
   }
 
   private void sendConfigUpdate(String deviceId) {
+    if (cloudIotManager == null) {
+      System.err.println("Cloud IoT not configured, skipping config update");
+      return;
+    }
     Config config = getCurrentConfig(deviceId);
     config.timestamp = new Date();
     try {
