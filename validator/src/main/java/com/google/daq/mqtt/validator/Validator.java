@@ -98,6 +98,7 @@ public class Validator {
         case PUBSUB_MARKER:
           validator.validatePubSub(instName);
           validator.initializeCloudIoT();
+          validator.initializeFirestoreDataSink();
           break;
         case FILES_MARKER:
           validator.validateFilesOutput(instName);
@@ -169,6 +170,11 @@ public class Validator {
     }
   }
 
+  private void initializeFirestoreDataSink() {
+    dataSink = new FirestoreDataSink(projectId);
+    System.out.println("Results will be uploaded to " + dataSink.getViewUrl());
+  }
+
   private void setSchemaSpec(String schemaPath) {
     File schemaFile = new File(schemaPath).getAbsoluteFile();
     if (schemaFile.isFile()) {
@@ -199,10 +205,8 @@ public class Validator {
 
   private BiConsumer<Map<String, Object>, Map<String, String>> messageValidator() {
     Map<String, Schema> schemaMap = getSchemaMap();
-    dataSink = new FirestoreDataSink(projectId);
-    System.out.println("Results will be uploaded to " + dataSink.getViewUrl());
     OUT_BASE_FILE.mkdirs();
-    System.out.println("Also found in such directories as " + OUT_BASE_FILE.getAbsolutePath());
+    System.out.println("Results may be in such directories as " + OUT_BASE_FILE.getAbsolutePath());
     System.out.println("Generating report file in " + METADATA_REPORT_FILE.getAbsolutePath());
 
     return (message, attributes) -> validateMessage(schemaMap, message, attributes);
@@ -329,7 +333,9 @@ public class Validator {
       if (schemaMap.containsKey(subFolder)) {
         try {
           validateMessage(schemaMap.get(subFolder), message);
-          dataSink.validationResult(deviceId, subFolder, attributes, message, null);
+          if (dataSink != null) {
+            dataSink.validationResult(deviceId, subFolder, attributes, message, null);
+          }
         } catch (ExceptionMap | ValidationException e) {
           processViolation(message, attributes, deviceId, subFolder, messageFile, errorFile, e);
           reportingDevice.addError(e);
@@ -418,7 +424,9 @@ public class Validator {
       throws FileNotFoundException {
     System.out.println("Error validating " + inputFile + ": " + e.getMessage());
     ErrorTree errorTree = ExceptionMap.format(e, ERROR_FORMAT_INDENT);
-    dataSink.validationResult(deviceId, schemaId, attributes, message, errorTree);
+    if (dataSink != null) {
+      dataSink.validationResult(deviceId, schemaId, attributes, message, errorTree);
+    }
     try (PrintStream errorOut = new PrintStream(errorFile)) {
       errorTree.write(errorOut);
     }
