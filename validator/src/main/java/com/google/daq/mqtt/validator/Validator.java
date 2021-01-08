@@ -66,7 +66,7 @@ public class Validator {
   private static final String SUB_FOLDER_KEY = "subFolder";
   private static final String STATE_SUBFOLER = "state";
   private static final String DEVICE_ID_KEY = "deviceId";
-  private static final String RSA_PRIVATE_PKCS8 = "rsa_private.pkcs8";
+  private static final String GCP_REFLECT_KEY_PKCS8 = "gcp_reflect_key.pkcs8";
   private final String projectId;
   private FirestoreDataSink dataSink;
   private File schemaRoot;
@@ -228,7 +228,7 @@ public class Validator {
 
   private void validateReflector(String instName) {
     BiConsumer<Map<String, Object>, Map<String, String>> validator = messageValidator();
-    IotCoreClient client = new IotCoreClient(projectId, cloudIotConfig, RSA_PRIVATE_PKCS8);
+    IotCoreClient client = new IotCoreClient(projectId, cloudIotConfig, GCP_REFLECT_KEY_PKCS8);
     System.out.println("Entering iot core message loop on " + client.getSubscriptionId());
     while(client.isActive()) {
       try {
